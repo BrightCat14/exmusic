@@ -1,8 +1,13 @@
 use cxx_qt_build::{CxxQtBuilder, QmlModule};
 
 fn main() {
+    println!("cargo::rerun-if-changed=src/app_icon.cpp");
+    println!("cargo::rerun-if-changed=assets/exmusic.svg");
+    println!("cargo::rerun-if-changed=assets/exmusic.png");
+
     CxxQtBuilder::new()
         .qt_module("Quick")
+        .qt_module("Svg")
         .qml_module(QmlModule {
             uri: "app.backend",
             rust_files: &["src/player.rs"],
@@ -26,8 +31,18 @@ fn main() {
                 "qml/NowPlayingBar.qml",
                 "qml/FullViewPlayer.qml",
             ],
-            qrc_files: &["assets/fa-solid-900.ttf", "qml/VisualizerShader.frag.qsb", "qml/RoundedMask.frag.qsb"],
+            qrc_files: &[
+                "assets/fa-solid-900.ttf",
+                "assets/exmusic.svg",
+                "assets/exmusic.png",
+                "assets/exmusic-with-no-bg.svg",
+                "qml/VisualizerShader.frag.qsb",
+                "qml/RoundedMask.frag.qsb",
+            ],
             ..Default::default()
+        })
+        .cc_builder(|cc| {
+            cc.file("src/app_icon.cpp");
         })
         .build();
 }

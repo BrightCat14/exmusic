@@ -43,12 +43,22 @@ Rectangle {
 
         Row {
             height: 58
-            spacing: 12
-            Icon { glyph: "\uf001"; tint: "#b69cff"; font.pixelSize: 28; width: 40; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+            spacing: 6
+            Image {
+                source: "../assets/exmusic-with-no-bg.svg"
+
+                sourceSize.width: 28
+                sourceSize.height: 28
+
+                width: 40
+                fillMode: Image.Pad
+                horizontalAlignment: Image.AlignHCenter
+
+                anchors.verticalCenter: parent.verticalCenter
+            }
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "EX"; color: "#b69cff"; font { pixelSize: 25; bold: true; letterSpacing: 2 } }
-                Text { text: "music"; color: "#ffffff"; font { pixelSize: 11; weight: Font.Black } }
+                Text { text: "EXmusic"; color: "#b69cff"; font { pixelSize: 25; bold: true; letterSpacing: 2 } }
             }
         }
         Item { width: 1; height: 8 }
