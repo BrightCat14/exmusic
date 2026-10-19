@@ -2,7 +2,7 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use discord_rich_presence::activity::{Activity, ActivityType, Assets, Timestamps};
+use discord_rich_presence::activity::{Activity, ActivityType, Assets, Button, Timestamps};
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use rustfm_scrobble::{Scrobble, Scrobbler};
 use serde::{Deserialize, Serialize};
@@ -324,12 +324,15 @@ fn update_discord(
     if !ensure_discord(config, discord, cooldown, events) {
         return;
     }
+    let mut buttons: Vec<Button> = Vec::new();
+    buttons.push(Button::new("Yandex Music Native Client", "https://github.com/BrightCat14/exmusic"));
 
     let start = now_ms() - state.position_ms.max(0);
     let mut activity = Activity::new()
         .details(state.title.as_str())
         .state(state.artist.as_str())
-        .activity_type(ActivityType::Listening);
+        .activity_type(ActivityType::Listening)
+        .buttons(buttons);
     if state.cover_url.starts_with("http://") || state.cover_url.starts_with("https://") {
         let mut assets = Assets::new().large_image(state.cover_url.as_str());
         if !state.album.is_empty() {
