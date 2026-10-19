@@ -83,8 +83,14 @@ Item {
                     spacing: 14
                     Rectangle {
                         width: 46; height: 46; radius: 10; color: "#302842"
-                        Image { anchors.fill: parent; source: modelData.coverUrl; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: true }
-                        Text { anchors.centerIn: parent; text: modelData.coverUrl.length ? "" : "♪"; color: "#e9e1ff"; font.pixelSize: 20 }
+                        CoverArt {
+                            id: waveArt
+                            anchors.fill: parent
+                            radius: 10
+                            backgroundColor: "transparent"
+                            source: modelData.coverSourceUrl || modelData.coverUrl || ""
+                        }
+                        Text { anchors.centerIn: parent; text: waveArt.hasImage ? "" : "♪"; color: "#e9e1ff"; font.pixelSize: 20 }
                     }
                     Column {
                         anchors.verticalCenter: parent.verticalCenter

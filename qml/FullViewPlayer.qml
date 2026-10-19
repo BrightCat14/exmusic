@@ -61,38 +61,14 @@ Item {
                 GradientStop { position: 0.52; color: "#775b9e" }
                 GradientStop { position: 1; color: "#181523" }
             }
-            Image {
-                id: bigCoverSource
+            CoverArt {
+                id: bigCoverArt
                 anchors.fill: parent
+                radius: 22
+                backgroundColor: "transparent"
                 source: player ? player.cover_url : ""
-                fillMode: Image.PreserveAspectCrop
-                cache: true
-                asynchronous: true
-                visible: false
             }
-            Canvas {
-                id: bigCoverCanvas
-                anchors.fill: parent
-                onPaint: {
-                    var ctx = getContext("2d")
-                    var r = 22
-                    ctx.reset()
-                    ctx.beginPath()
-                    ctx.moveTo(r, 0); ctx.lineTo(width - r, 0)
-                    ctx.arc(width - r, r, r, -Math.PI / 2, 0)
-                    ctx.lineTo(width, height - r)
-                    ctx.arc(width - r, height - r, r, 0, Math.PI / 2)
-                    ctx.lineTo(r, height)
-                    ctx.arc(r, height - r, r, Math.PI / 2, Math.PI)
-                    ctx.lineTo(0, r)
-                    ctx.arc(r, r, r, Math.PI, Math.PI * 1.5)
-                    ctx.clip()
-                    if (bigCoverSource.status === Image.Ready)
-                        ctx.drawImage(bigCoverSource, 0, 0, width, height)
-                }
-            }
-            Connections { target: bigCoverSource; function onStatusChanged() { bigCoverCanvas.requestPaint() } }
-            Text { anchors.centerIn: parent; text: player && player.cover_url.length ? "" : "EX"; color: "#fff4fb"; font { pixelSize: 40; weight: Font.Black; letterSpacing: 4 } }
+            Text { anchors.centerIn: parent; text: bigCoverArt.hasImage ? "" : "EX"; color: "#fff4fb"; font { pixelSize: 40; weight: Font.Black; letterSpacing: 4 } }
         }
 
         Text {

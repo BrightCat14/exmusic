@@ -210,30 +210,14 @@ Item {
             GradientStop { position: 0.52; color: "#775b9e" }
             GradientStop { position: 1; color: "#181523" }
         }
-        Image { id: coverSource; anchors.fill: parent; source: player.cover_url; fillMode: Image.PreserveAspectCrop; cache: true; asynchronous: true; visible: false }
-        Canvas {
-            id: roundedCover
+        CoverArt {
+            id: coverArt
             anchors.fill: parent
-            onPaint: {
-                var ctx = getContext("2d")
-                var r = 18
-                ctx.reset()
-                ctx.beginPath()
-                ctx.moveTo(r, 0); ctx.lineTo(width - r, 0)
-                ctx.arc(width - r, r, r, -Math.PI / 2, 0)
-                ctx.lineTo(width, height - r)
-                ctx.arc(width - r, height - r, r, 0, Math.PI / 2)
-                ctx.lineTo(r, height)
-                ctx.arc(r, height - r, r, Math.PI / 2, Math.PI)
-                ctx.lineTo(0, r)
-                ctx.arc(r, r, r, Math.PI, Math.PI * 1.5)
-                ctx.clip()
-                if (coverSource.status === Image.Ready)
-                    ctx.drawImage(coverSource, 0, 0, width, height)
-            }
+            radius: 18
+            backgroundColor: "transparent"
+            source: player ? player.cover_url : ""
         }
-        Connections { target: coverSource; function onStatusChanged() { roundedCover.requestPaint() } }
-        Text { anchors.centerIn: parent; text: player.cover_url.length ? "" : "EX"; color: "#fff4fb"; font { pixelSize: 25; weight: Font.Black; letterSpacing: 3 } }
+        Text { anchors.centerIn: parent; text: coverArt.hasImage ? "" : "EX"; color: "#fff4fb"; font { pixelSize: 25; weight: Font.Black; letterSpacing: 3 } }
     }
 
     // Action row

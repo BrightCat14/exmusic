@@ -1,3 +1,4 @@
+mod integrations;
 mod player;
 mod yandex;
 

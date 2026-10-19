@@ -1,3 +1,4 @@
+use crate::integrations::{self, IntegrationCommand};
 use crate::yandex::YandexClient;
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
@@ -5,7 +6,7 @@ use cxx_qt_lib::QString;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use rustfft::{FftPlanner, num_complex::Complex};
 use serde_json::{Value, json};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{self, Cursor, Read, Seek, SeekFrom};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -26,8 +27,13 @@ enum BackendEvent {
         uid: String,
     },
     Search(String),
-    SearchCovers(String),
-    Wave(String),
+    WaveTracks {
+        session_id: String,
+        batch_id: String,
+        tracks: Vec<crate::yandex::TrackItem>,
+        replace: bool,
+        autoplay: bool,
+    },
     QueueLoaded(Vec<crate::yandex::TrackItem>),
     QueueId(String),
     Playback {
@@ -50,6 +56,30 @@ enum BackendEvent {
     Error(String),
 }
 
+fn spawn_wave_feedback(
+    token: String,
+    session_id: String,
+    batch_id: String,
+    event: &'static str,
+    track_id: String,
+    total_played_seconds: Option<f64>,
+) {
+    if session_id.is_empty() || batch_id.is_empty() {
+        return;
+    }
+    thread::spawn(move || {
+        let Ok(client) = YandexClient::new(token) else {
+            return;
+        };
+        let track = (!track_id.is_empty()).then_some(track_id.as_str());
+        if let Err(error) =
+            client.wave_feedback(&session_id, event, &batch_id, track, total_played_seconds)
+        {
+            eprintln!("[yandex/wave] feedback {event} failed: {error}");
+        }
+    });
+}
+
 fn track_to_value(track: crate::yandex::TrackItem) -> Value {
     json!({
         "id": track.id,
@@ -59,56 +89,32 @@ fn track_to_value(track: crate::yandex::TrackItem) -> Value {
         "album": track.album,
         "albumId": track.album_id,
         "coverUrl": track.cover_url,
+        "coverSourceUrl": track.cover_source_url,
         "durationMs": track.duration_ms,
     })
 }
 
-const COVER_FETCH_LIMIT: usize = 80;
-const COVER_WORKERS: usize = 8;
+const WAVE_QUEUE_LIMIT: usize = 200;
 
-fn tracks_to_values(client: &YandexClient, tracks: Vec<crate::yandex::TrackItem>) -> Vec<Value> {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    let mut tracks = tracks;
-    let count = tracks.len().min(COVER_FETCH_LIMIT);
-    for track in tracks.iter_mut().skip(COVER_FETCH_LIMIT) {
-        track.cover_url = String::new();
+fn external_cover_url(url: &str) -> String {
+    match url.strip_prefix("http://") {
+        Some(rest) => format!("https://{rest}"),
+        None => url.to_owned(),
     }
+}
 
-    let mut covers: Vec<Mutex<Option<String>>> = (0..count).map(|_| Mutex::new(None)).collect();
-    if count > 0 {
-        let next = AtomicUsize::new(0);
-        let workers = COVER_WORKERS.min(count);
-        thread::scope(|scope| {
-            for _ in 0..workers {
-                scope.spawn(|| {
-                    loop {
-                        let index = next.fetch_add(1, Ordering::Relaxed);
-                        if index >= count {
-                            break;
-                        }
-                        let url = tracks[index].cover_url.clone();
-                        if url.is_empty() {
-                            continue;
-                        }
-                        let data = client.image_data_url(&url).unwrap_or_default();
-                        *covers[index].lock().unwrap() = Some(data);
-                    }
-                });
-            }
-        });
+fn scrobble_threshold(duration_ms: i64) -> i64 {
+    if duration_ms <= 0 {
+        return 240_000;
     }
+    if duration_ms < 30_000 {
+        return 0;
+    }
+    (duration_ms / 2).min(240_000)
+}
 
-    tracks
-        .into_iter()
-        .enumerate()
-        .map(|(index, mut track)| {
-            if index < count {
-                track.cover_url = covers[index].get_mut().unwrap().take().unwrap_or_default();
-            }
-            track_to_value(track)
-        })
-        .collect()
+fn tracks_to_values(tracks: Vec<crate::yandex::TrackItem>) -> Vec<Value> {
+    tracks.into_iter().map(track_to_value).collect()
 }
 
 fn tracks_from_json(json_text: &str) -> Vec<crate::yandex::TrackItem> {
@@ -148,6 +154,11 @@ fn tracks_from_json(json_text: &str) -> Vec<crate::yandex::TrackItem> {
                             .to_owned(),
                         cover_url: item
                             .get("coverUrl")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_owned(),
+                        cover_source_url: item
+                            .get("coverSourceUrl")
                             .and_then(Value::as_str)
                             .unwrap_or("")
                             .to_owned(),
@@ -466,7 +477,14 @@ pub mod qobject {
         #[qproperty(QString, user_code)]
         #[qproperty(QString, verification_url)]
         #[qproperty(QString, login_error)]
+        #[qproperty(bool, discord_enabled)]
+        #[qproperty(bool, lastfm_enabled)]
+        #[qproperty(QString, integration_status)]
+        #[qproperty(QString, integration_config_json)]
         type PlayerBackend = super::PlayerBackendRust;
+
+        #[qinvokable]
+        fn save_integration_config(self: Pin<&mut PlayerBackend>, config_json: QString);
 
         #[qinvokable]
         fn begin_login(self: Pin<&mut PlayerBackend>, client_id: QString, client_secret: QString);
@@ -566,6 +584,17 @@ pub struct PlayerBackendRust {
     user_code: QString,
     verification_url: QString,
     login_error: QString,
+    discord_enabled: bool,
+    lastfm_enabled: bool,
+    integration_status: QString,
+    integration_config_json: QString,
+    integration_config: integrations::IntegrationConfig,
+    integrations: Option<integrations::Integrations>,
+    current_album: String,
+    current_cover_source_url: String,
+    current_duration_ms: i64,
+    max_position_ms: i64,
+    scrobbled: bool,
     login_events: Option<Receiver<LoginEvent>>,
     backend_events: Option<Receiver<BackendEvent>>,
     backend_sender: Option<Sender<BackendEvent>>,
@@ -576,6 +605,14 @@ pub struct PlayerBackendRust {
     queue: Vec<crate::yandex::TrackItem>,
     queue_index: usize,
     queue_id: String,
+    wave_session_id: String,
+    wave_batch_id: String,
+    wave_active: bool,
+    wave_fetching: bool,
+    wave_pending_autoplay: bool,
+    wave_seen: HashSet<String>,
+    wave_batches: HashMap<String, String>,
+    wave_tracks: Vec<crate::yandex::TrackItem>,
     user_id: String,
     liked_ids: HashSet<String>,
     stream_cache: Option<Arc<Mutex<StreamCache>>>,
@@ -583,6 +620,10 @@ pub struct PlayerBackendRust {
 
 impl Default for PlayerBackendRust {
     fn default() -> Self {
+        let integration_config = integrations::load_config();
+        let integration_config_json =
+            serde_json::to_string(&integration_config).unwrap_or_else(|_| "{}".to_owned());
+        let integrations_handle = integrations::spawn(integration_config.clone());
         Self {
             playing: false,
             liked: false,
@@ -624,6 +665,17 @@ impl Default for PlayerBackendRust {
             user_code: QString::from(""),
             verification_url: QString::from(""),
             login_error: QString::from(""),
+            discord_enabled: integration_config.discord_enabled,
+            lastfm_enabled: integration_config.lastfm_enabled,
+            integration_status: QString::from(""),
+            integration_config_json: QString::from(integration_config_json),
+            integration_config,
+            integrations: Some(integrations_handle),
+            current_album: String::new(),
+            current_cover_source_url: String::new(),
+            current_duration_ms: 0,
+            max_position_ms: 0,
+            scrobbled: false,
             login_events: None,
             backend_events: None,
             backend_sender: None,
@@ -634,6 +686,14 @@ impl Default for PlayerBackendRust {
             queue: Vec::new(),
             queue_index: 0,
             queue_id: String::new(),
+            wave_session_id: String::new(),
+            wave_batch_id: String::new(),
+            wave_active: false,
+            wave_fetching: false,
+            wave_pending_autoplay: false,
+            wave_seen: HashSet::new(),
+            wave_batches: HashMap::new(),
+            wave_tracks: Vec::new(),
             user_id: String::new(),
             liked_ids: HashSet::new(),
             stream_cache: None,
@@ -651,6 +711,33 @@ impl qobject::PlayerBackend {
         rust.backend_events = Some(receiver);
         rust.backend_sender = Some(sender.clone());
         sender
+    }
+
+    fn save_integration_config(mut self: Pin<&mut Self>, config_json: QString) {
+        let text = config_json.to_string();
+        let config: integrations::IntegrationConfig = match serde_json::from_str(&text) {
+            Ok(config) => config,
+            Err(error) => {
+                self.as_mut()
+                    .set_integration_status(QString::from(format!("Invalid config: {error}")));
+                return;
+            }
+        };
+        let json = serde_json::to_string(&config).unwrap_or_else(|_| "{}".to_owned());
+        self.as_mut().set_discord_enabled(config.discord_enabled);
+        self.as_mut().set_lastfm_enabled(config.lastfm_enabled);
+        self.as_mut()
+            .set_integration_config_json(QString::from(json));
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.integration_config = config.clone();
+            if let Err(error) = integrations::save_config(&backend.integration_config) {
+                backend.integration_status = QString::from(error);
+            }
+        }
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            handle.send(IntegrationCommand::Reconfigure(config));
+        }
     }
 
     fn begin_login(mut self: Pin<&mut Self>, client_id: QString, client_secret: QString) {
@@ -787,14 +874,7 @@ impl qobject::PlayerBackend {
                         })
                         .and_then(serde_json::Value::as_str)
                         .map(|avatar_id| {
-                            format!("https://avatars.yandex.net/get-yapic/{avatar_id}/islands-200")
-                        })
-                        .and_then(|url| match client.image_data_url(&url) {
-                            Ok(image) => Some(image),
-                            Err(error) => {
-                                eprintln!("[yandex/image] avatar: {error}");
-                                None
-                            }
+                            format!("http://avatars.yandex.net/get-yapic/{avatar_id}/islands-200")
                         })
                         .unwrap_or_default();
                     let uid = status
@@ -819,6 +899,7 @@ impl qobject::PlayerBackend {
                     }
                     let mut initial_queue = Vec::new();
                     let mut queue_id = String::new();
+                    let mut wave_session: Option<(String, String)> = None;
                     let initial = (|| {
                         let active = client.active_queue().ok().flatten();
                         let track_id = if let Some(active) = active {
@@ -828,6 +909,7 @@ impl qobject::PlayerBackend {
                                 None => {
                                     let batch = client.start_wave().ok()?;
                                     initial_queue = batch.tracks;
+                                    wave_session = Some((batch.session_id, batch.batch_id));
                                     queue_id.clear();
                                     initial_queue.first().map(|track| track.id.clone())?
                                 }
@@ -835,21 +917,28 @@ impl qobject::PlayerBackend {
                         } else {
                             let batch = client.start_wave().ok()?;
                             initial_queue = batch.tracks;
+                            wave_session = Some((batch.session_id, batch.batch_id));
                             initial_queue.first().map(|track| track.id.clone())?
                         };
-                        let mut track = client.track(&track_id).ok()?;
+                        let track = client.track(&track_id).ok()?;
                         let url = client.stream_url(&track_id).ok()?;
                         let response = client.open_stream(&url).ok()?;
-                        if !track.cover_url.is_empty() {
-                            track.cover_url =
-                                client.image_data_url(&track.cover_url).unwrap_or_default();
-                        }
                         Some((track, response))
                     })();
                     if !queue_id.is_empty() {
                         let _ = sender.send(BackendEvent::QueueId(queue_id.clone()));
                     }
-                    if !initial_queue.is_empty() {
+                    if let Some((session_id, batch_id)) = wave_session {
+                        if !initial_queue.is_empty() {
+                            let _ = sender.send(BackendEvent::WaveTracks {
+                                session_id,
+                                batch_id,
+                                tracks: initial_queue.clone(),
+                                replace: true,
+                                autoplay: false,
+                            });
+                        }
+                    } else if !initial_queue.is_empty() {
                         let _ = sender.send(BackendEvent::QueueLoaded(initial_queue));
                     }
                     if let Some((track, response)) = initial {
@@ -886,42 +975,11 @@ impl qobject::PlayerBackend {
         self.as_mut().set_error(QString::from(""));
         let sender = self.as_mut().event_sender();
         thread::spawn(move || {
-            let result = YandexClient::new(token)
-                .and_then(|client| client.search(&text).map(|tracks| (client, tracks)));
+            let result = YandexClient::new(token).and_then(|client| client.search(&text));
             match result {
-                Ok((client, tracks)) => {
-                    let mut items: Vec<_> = tracks
-                        .into_iter()
-                        .map(|track| {
-                            json!({
-                                "id": track.id,
-                                "title": track.title,
-                                "artist": track.artist,
-                                "artistId": track.artist_id,
-                                "album": track.album,
-                                "albumId": track.album_id,
-                                "coverUrl": track.cover_url,
-                                "durationMs": track.duration_ms,
-                            })
-                        })
-                        .collect();
+                Ok(tracks) => {
+                    let items = tracks_to_values(tracks);
                     let _ = sender.send(BackendEvent::Search(
-                        serde_json::Value::Array(items.clone()).to_string(),
-                    ));
-                    for item in &mut items {
-                        let Some(url) = item.get("coverUrl").and_then(|value| value.as_str())
-                        else {
-                            continue;
-                        };
-                        if url.is_empty() {
-                            continue;
-                        }
-                        match client.image_data_url(url) {
-                            Ok(image) => item["coverUrl"] = image.into(),
-                            Err(error) => eprintln!("[yandex/image] cover: {error}"),
-                        }
-                    }
-                    let _ = sender.send(BackendEvent::SearchCovers(
                         serde_json::Value::Array(items).to_string(),
                     ));
                 }
@@ -960,36 +1018,27 @@ impl qobject::PlayerBackend {
             });
             match result {
                 Ok((client, batch)) => {
+                    let session_id = batch.session_id.clone();
+                    let batch_id = batch.batch_id.clone();
                     let wave_tracks = batch.tracks;
                     let first_track_id = wave_tracks.first().map(|track| track.id.clone());
-                    let _ = sender.send(BackendEvent::QueueLoaded(wave_tracks.clone()));
-                    let items: Vec<_> = wave_tracks
-                        .into_iter()
-                        .map(|track| {
-                            json!({
-                                "id": track.id,
-                                "title": track.title,
-                                "artist": track.artist,
-                                "artistId": track.artist_id,
-                                "album": track.album,
-                                "albumId": track.album_id,
-                                "coverUrl": track.cover_url,
-                                "durationMs": track.duration_ms,
-                            })
-                        })
-                        .collect();
-                    let _ = sender.send(BackendEvent::Wave(
-                        serde_json::Value::Array(items).to_string(),
-                    ));
+                    let _ = sender.send(BackendEvent::WaveTracks {
+                        session_id: session_id.clone(),
+                        batch_id: batch_id.clone(),
+                        tracks: wave_tracks,
+                        replace: true,
+                        autoplay: false,
+                    });
+                    if let Err(error) =
+                        client.wave_feedback(&session_id, "radioStarted", &batch_id, None, None)
+                    {
+                        eprintln!("[yandex/wave] radioStarted failed: {error}");
+                    }
                     if let Some(track_id) = first_track_id {
                         let result = (|| {
-                            let mut track = client.track(&track_id)?;
+                            let track = client.track(&track_id)?;
                             let url = client.stream_url(&track_id)?;
                             let response = client.open_stream(&url)?;
-                            if !track.cover_url.is_empty() {
-                                track.cover_url =
-                                    client.image_data_url(&track.cover_url).unwrap_or_default();
-                            }
                             Ok::<_, crate::yandex::Error>((track, response))
                         })();
                         match result {
@@ -1019,8 +1068,33 @@ impl qobject::PlayerBackend {
 
     fn play_track(mut self: Pin<&mut Self>, track_id: QString) {
         let track_id = track_id.to_string();
-        self.as_mut().rust_mut().get_mut().queue.clear();
-        self.as_mut().rust_mut().get_mut().queue_index = 0;
+        let existing_index = self
+            .as_ref()
+            .get_ref()
+            .rust()
+            .queue
+            .iter()
+            .position(|track| track.id == track_id);
+        if let Some(index) = existing_index {
+            self.as_mut().rust_mut().get_mut().queue_index = index;
+            self.as_mut().publish_queue();
+            self.as_mut().sync_queue_position();
+            self.request_playback(track_id);
+            return;
+        }
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.queue.clear();
+            backend.queue_index = 0;
+            backend.wave_active = false;
+            backend.wave_fetching = false;
+            backend.wave_pending_autoplay = false;
+            backend.wave_session_id.clear();
+            backend.wave_batch_id.clear();
+            backend.wave_seen.clear();
+            backend.wave_batches.clear();
+            backend.wave_tracks.clear();
+        }
         self.request_playback(track_id);
     }
 
@@ -1036,18 +1110,9 @@ impl qobject::PlayerBackend {
         thread::spawn(move || {
             let result = (|| {
                 let client = YandexClient::new(token)?;
-                let mut track = client.track(&track_id)?;
+                let track = client.track(&track_id)?;
                 let url = client.stream_url(&track_id)?;
                 let response = client.open_stream(&url)?;
-                if !track.cover_url.is_empty() {
-                    track.cover_url = match client.image_data_url(&track.cover_url) {
-                        Ok(image) => image,
-                        Err(error) => {
-                            eprintln!("[yandex/image] cover {}: {error}", track.id);
-                            String::new()
-                        }
-                    };
-                }
                 Ok::<_, crate::yandex::Error>((track, response))
             })();
             match result {
@@ -1066,6 +1131,27 @@ impl qobject::PlayerBackend {
     }
 
     fn poll_backend(mut self: Pin<&mut Self>) {
+        let mut integration_events = Vec::new();
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            while let Some(event) = handle.try_event() {
+                integration_events.push(event);
+            }
+        }
+        for event in integration_events {
+            if let Some(session_key) = event.strip_prefix("lastfm:session:") {
+                let session_key = session_key.to_owned();
+                let json = {
+                    let backend = self.as_mut().rust_mut().get_mut();
+                    backend.integration_config.lastfm_session_key = session_key;
+                    let _ = integrations::save_config(&backend.integration_config);
+                    serde_json::to_string(&backend.integration_config)
+                        .unwrap_or_else(|_| "{}".to_owned())
+                };
+                self.as_mut().set_integration_config_json(QString::from(json));
+            } else {
+                self.as_mut().set_integration_status(QString::from(event));
+            }
+        }
         let bands = self
             .as_ref()
             .get_ref()
@@ -1087,6 +1173,48 @@ impl qobject::PlayerBackend {
             .map(|sink| sink.get_pos().as_millis().min(i32::MAX as u128) as i32);
         if let Some(position_ms) = position_ms {
             self.as_mut().set_position_ms(position_ms);
+            if *self.as_ref().playing() {
+                let mut album = None;
+                {
+                    let backend = self.as_mut().rust_mut().get_mut();
+                    backend.max_position_ms = backend.max_position_ms.max(position_ms as i64);
+                    let threshold = scrobble_threshold(backend.current_duration_ms);
+                    if !backend.scrobbled && threshold > 0 && backend.max_position_ms >= threshold
+                    {
+                        backend.scrobbled = true;
+                        album = Some(backend.current_album.clone());
+                    }
+                }
+                if let Some(album) = album {
+                    let title = self.as_ref().title().to_string();
+                    let artist = self.as_ref().artist().to_string();
+                    let timestamp = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|duration| duration.as_secs() as i64)
+                        .unwrap_or(0);
+                    if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+                        handle.send(IntegrationCommand::Scrobble {
+                            title,
+                            artist,
+                            album,
+                            timestamp,
+                        });
+                    }
+                }
+            }
+        }
+        if *self.as_ref().playing() {
+            let (wave_active, fetching, remaining) = {
+                let backend = self.as_ref().get_ref().rust();
+                (
+                    backend.wave_active,
+                    backend.wave_fetching,
+                    backend.queue.len().saturating_sub(backend.queue_index + 1),
+                )
+            };
+            if wave_active && !fetching && remaining <= 2 {
+                self.as_mut().request_wave_batch(false);
+            }
         }
         let finished = self
             .as_ref()
@@ -1101,7 +1229,14 @@ impl qobject::PlayerBackend {
                 return;
             }
             self.as_mut().set_playing(false);
-            self.next();
+            let position_ms = *self.as_ref().duration_ms() as i64;
+            if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+                handle.send(IntegrationCommand::PlayingChanged {
+                    playing: false,
+                    position_ms,
+                });
+            }
+            self.as_mut().advance(true);
             return;
         }
         let lyrics = self
@@ -1134,16 +1269,81 @@ impl qobject::PlayerBackend {
                     .set_search_results_json(QString::from(results));
                 self.as_mut().set_loading(false);
             }
-            Ok(BackendEvent::SearchCovers(results)) => {
+            Ok(BackendEvent::WaveTracks {
+                session_id,
+                batch_id,
+                tracks,
+                replace,
+                autoplay,
+            }) => {
+                let mut first_new_index = None;
+                let should_autoplay;
+                {
+                    let backend = self.as_mut().rust_mut().get_mut();
+                    backend.wave_fetching = false;
+                    if !replace && backend.wave_session_id != session_id {
+                        return;
+                    }
+                    should_autoplay = autoplay || backend.wave_pending_autoplay;
+                    backend.wave_pending_autoplay = false;
+                    if replace {
+                        backend.wave_session_id = session_id.clone();
+                        backend.wave_active = true;
+                        backend.wave_batch_id = batch_id.clone();
+                        backend.wave_seen.clear();
+                        backend.wave_batches.clear();
+                        backend.wave_tracks.clear();
+                        backend.queue.clear();
+                        backend.queue_index = 0;
+                    }
+                    for track in tracks {
+                        if backend.wave_seen.insert(track.id.clone()) {
+                            backend
+                                .wave_batches
+                                .insert(track.id.clone(), batch_id.clone());
+                            backend.wave_tracks.push(track.clone());
+                            if first_new_index.is_none() {
+                                first_new_index = Some(backend.queue.len());
+                            }
+                            backend.queue.push(track);
+                        }
+                    }
+                }
+                let wave_json = {
+                    let backend = self.as_ref().get_ref().rust();
+                    Value::Array(
+                        backend
+                            .wave_tracks
+                            .iter()
+                            .cloned()
+                            .map(track_to_value)
+                            .collect(),
+                    )
+                    .to_string()
+                };
                 self.as_mut()
-                    .set_search_results_json(QString::from(results));
-            }
-            Ok(BackendEvent::Wave(results)) => {
-                self.as_mut().set_wave_results_json(QString::from(results));
+                    .set_wave_results_json(QString::from(wave_json));
+                if should_autoplay {
+                    if let Some(index) = first_new_index {
+                        let track_id = self.as_ref().get_ref().rust().queue[index].id.clone();
+                        self.as_mut().rust_mut().get_mut().queue_index = index;
+                        self.as_mut().set_loading(true);
+                        self.as_mut().publish_queue();
+                        self.as_mut().request_playback(track_id);
+                    } else if !self.as_ref().get_ref().rust().wave_session_id.is_empty() {
+                        self.as_mut().request_wave_batch(true);
+                    }
+                } else {
+                    self.as_mut().publish_queue();
+                }
             }
             Ok(BackendEvent::QueueLoaded(tracks)) => {
-                self.as_mut().rust_mut().get_mut().queue = tracks;
-                self.as_mut().rust_mut().get_mut().queue_index = 0;
+                {
+                    let backend = self.as_mut().rust_mut().get_mut();
+                    backend.queue = tracks;
+                    backend.queue_index = 0;
+                    backend.wave_active = false;
+                }
                 self.as_mut().publish_queue();
             }
             Ok(BackendEvent::QueueId(queue_id)) => {
@@ -1242,8 +1442,12 @@ impl qobject::PlayerBackend {
                     self.as_mut().set_title(QString::from(track.title.clone()));
                     self.as_mut()
                         .set_artist(QString::from(track.artist.clone()));
-                    self.as_mut()
-                        .set_cover_url(QString::from(track.cover_url.clone()));
+                    let cover_url = if track.cover_source_url.is_empty() {
+                        track.cover_url.clone()
+                    } else {
+                        track.cover_source_url.clone()
+                    };
+                    self.as_mut().set_cover_url(QString::from(cover_url));
                     self.as_mut()
                         .set_duration_ms(track.duration_ms.min(i32::MAX as i64) as i32);
                     self.as_mut().set_position_ms(0);
@@ -1257,15 +1461,64 @@ impl qobject::PlayerBackend {
                     self.as_mut().publish_queue();
                     Ok(())
                 })();
+                let playback_ok = result.is_ok();
                 if let Err(error) = result {
                     eprintln!("[audio] {error}");
                     self.as_mut().set_error(QString::from(error));
                     self.as_mut().set_loading(false);
                 }
+                if autoplay && playback_ok {
+                    let feedback = {
+                        let backend = self.as_ref().get_ref().rust();
+                        if backend.wave_active {
+                            backend
+                                .wave_batches
+                                .get(&track.id)
+                                .cloned()
+                                .map(|batch_id| (backend.wave_session_id.clone(), batch_id))
+                        } else {
+                            None
+                        }
+                    };
+                    if let (Some(token), Some((session_id, batch_id))) = (load_token(), feedback) {
+                        spawn_wave_feedback(
+                            token,
+                            session_id,
+                            batch_id,
+                            "trackStarted",
+                            track.id.clone(),
+                            None,
+                        );
+                    }
+                }
+                {
+                    let backend = self.as_mut().rust_mut().get_mut();
+                    backend.current_album = track.album.clone();
+                    backend.current_cover_source_url = track.cover_source_url.clone();
+                    backend.current_duration_ms = track.duration_ms;
+                    backend.max_position_ms = 0;
+                    backend.scrobbled = false;
+                }
+                if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+                    handle.send(IntegrationCommand::NowPlaying {
+                        title: track.title.clone(),
+                        artist: track.artist.clone(),
+                        album: track.album.clone(),
+                        cover_url: external_cover_url(&track.cover_source_url),
+                        duration_ms: track.duration_ms,
+                        position_ms: 0,
+                        playing: autoplay,
+                    });
+                }
                 self.as_mut().load_lyrics(QString::from(track.id));
             }
             Ok(BackendEvent::Error(error)) => {
                 eprintln!("[yandex/api] {error}");
+                {
+                    let backend = self.as_mut().rust_mut().get_mut();
+                    backend.wave_fetching = false;
+                    backend.wave_pending_autoplay = false;
+                }
                 self.as_mut().set_error(QString::from(error));
                 self.as_mut().set_loading(false);
             }
@@ -1299,13 +1552,31 @@ impl qobject::PlayerBackend {
     }
 
     fn toggle_play(mut self: Pin<&mut Self>) {
+        let mut changed = None;
         if let Some(sink) = self.as_ref().get_ref().rust().audio_sink.as_ref() {
             if sink.is_paused() {
                 sink.play();
-                self.as_mut().set_playing(true);
+                changed = Some(true);
             } else {
                 sink.pause();
-                self.as_mut().set_playing(false);
+                changed = Some(false);
+            }
+        }
+        if let Some(playing) = changed {
+            self.as_mut().set_playing(playing);
+            let position_ms = self
+                .as_ref()
+                .get_ref()
+                .rust()
+                .audio_sink
+                .as_ref()
+                .map(|sink| sink.get_pos().as_millis().min(i64::MAX as u128) as i64)
+                .unwrap_or(0);
+            if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+                handle.send(IntegrationCommand::PlayingChanged {
+                    playing,
+                    position_ms,
+                });
             }
         }
     }
@@ -1402,18 +1673,41 @@ impl qobject::PlayerBackend {
         sink.play();
         self.as_mut().rust_mut().get_mut().audio_sink = Some(sink);
         self.as_mut().set_position_ms(0);
-        let cover_url = self.as_ref().cover_url().clone();
-        self.as_mut().set_cover_url(QString::from(""));
-        self.as_mut().set_cover_url(cover_url);
         self.as_mut().set_playing(true);
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.scrobbled = false;
+            backend.max_position_ms = 0;
+        }
+        let title = self.as_ref().title().to_string();
+        let artist = self.as_ref().artist().to_string();
+        let album = self.as_ref().get_ref().rust().current_album.clone();
+        let cover_url =
+            external_cover_url(&self.as_ref().get_ref().rust().current_cover_source_url);
+        let duration_ms = self.as_ref().get_ref().rust().current_duration_ms;
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            handle.send(IntegrationCommand::NowPlaying {
+                title,
+                artist,
+                album,
+                cover_url,
+                duration_ms,
+                position_ms: 0,
+                playing: true,
+            });
+        }
         eprintln!("[audio] replayed cached track");
         true
     }
 
     fn next(mut self: Pin<&mut Self>) {
-        let next = {
+        self.as_mut().advance(false);
+    }
+
+    fn advance(mut self: Pin<&mut Self>, finished: bool) {
+        let (next, wave_active, current_index, current_track_id, session_id, batch_id, seconds) = {
             let backend = self.as_ref().get_ref().rust();
-            if backend.queue.is_empty() {
+            let next = if backend.queue.is_empty() {
                 None
             } else if *self.as_ref().repeat() {
                 Some(backend.queue_index)
@@ -1425,19 +1719,114 @@ impl qobject::PlayerBackend {
                 Some(stamp % backend.queue.len())
             } else if backend.queue_index + 1 < backend.queue.len() {
                 Some(backend.queue_index + 1)
-            } else if *self.as_ref().repeat() {
-                Some(0)
             } else {
                 None
-            }
+            };
+            let current_track_id = backend.current_track_id.to_string();
+            let batch_id = backend
+                .wave_batches
+                .get(&current_track_id)
+                .cloned()
+                .unwrap_or_else(|| backend.wave_batch_id.clone());
+            let seconds = backend
+                .audio_sink
+                .as_ref()
+                .map(|sink| sink.get_pos().as_secs_f64())
+                .unwrap_or(0.0);
+            (
+                next,
+                backend.wave_active,
+                backend.queue_index,
+                current_track_id,
+                backend.wave_session_id.clone(),
+                batch_id,
+                seconds,
+            )
         };
+        let advancing = match next {
+            Some(index) => index != current_index,
+            None => true,
+        };
+        if wave_active && advancing && !current_track_id.is_empty() && !batch_id.is_empty() {
+            let event = if finished { "trackFinished" } else { "skip" };
+            if let Some(token) = load_token() {
+                spawn_wave_feedback(
+                    token,
+                    session_id,
+                    batch_id,
+                    event,
+                    current_track_id,
+                    Some(seconds),
+                );
+            }
+        }
         if let Some(index) = next {
             let track_id = self.as_ref().get_ref().rust().queue[index].id.clone();
             self.as_mut().rust_mut().get_mut().queue_index = index;
             self.as_mut().publish_queue();
             self.as_mut().sync_queue_position();
             self.request_playback(track_id);
+        } else if wave_active {
+            self.as_mut().request_wave_batch(true);
         }
+    }
+
+    fn request_wave_batch(mut self: Pin<&mut Self>, autoplay: bool) {
+        let (session_id, queue_ids, fetching) = {
+            let backend = self.as_ref().get_ref().rust();
+            let start = backend.queue.len().saturating_sub(WAVE_QUEUE_LIMIT);
+            (
+                backend.wave_session_id.clone(),
+                backend.queue[start..]
+                    .iter()
+                    .map(|track| track.id.clone())
+                    .collect::<Vec<_>>(),
+                backend.wave_fetching,
+            )
+        };
+        if session_id.is_empty() {
+            return;
+        }
+        if fetching {
+            if autoplay {
+                self.as_mut().rust_mut().get_mut().wave_pending_autoplay = true;
+            }
+            return;
+        }
+        let Some(token) = load_token() else {
+            return;
+        };
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.wave_fetching = true;
+            if autoplay {
+                backend.wave_pending_autoplay = true;
+            }
+        }
+        let sender = self.as_mut().event_sender();
+        thread::spawn(move || {
+            let result = YandexClient::new(token)
+                .and_then(|client| client.wave_next(&session_id, &queue_ids));
+            match result {
+                Ok(batch) if batch.tracks.is_empty() => {
+                    let _ = sender.send(BackendEvent::Error(
+                        "My Wave returned no more tracks.".into(),
+                    ));
+                }
+                Ok(batch) => {
+                    let _ = sender.send(BackendEvent::WaveTracks {
+                        session_id: batch.session_id,
+                        batch_id: batch.batch_id,
+                        tracks: batch.tracks,
+                        replace: false,
+                        autoplay: false,
+                    });
+                }
+                Err(error) => {
+                    let _ = sender.send(BackendEvent::Error(error.to_string()));
+                }
+            }
+        });
     }
 
     fn previous(mut self: Pin<&mut Self>) {
@@ -1477,6 +1866,7 @@ impl qobject::PlayerBackend {
                         "album": track.album,
                         "albumId": track.album_id,
                         "coverUrl": track.cover_url,
+                        "coverSourceUrl": track.cover_source_url,
                         "durationMs": track.duration_ms,
                     })
                 })
@@ -1546,6 +1936,14 @@ impl qobject::PlayerBackend {
             let backend = self.as_mut().rust_mut().get_mut();
             backend.queue = tracks;
             backend.queue_index = index;
+            backend.wave_active = false;
+            backend.wave_fetching = false;
+            backend.wave_pending_autoplay = false;
+            backend.wave_session_id.clear();
+            backend.wave_batch_id.clear();
+            backend.wave_seen.clear();
+            backend.wave_batches.clear();
+            backend.wave_tracks.clear();
         }
         self.as_mut().publish_queue();
         self.request_playback(track_id);
@@ -1568,11 +1966,11 @@ impl qobject::PlayerBackend {
                 } else {
                     uid
                 };
-                let tracks = client.liked_tracks(&uid)?;
-                Ok::<_, crate::yandex::Error>(tracks_to_values(&client, tracks))
+                client.liked_tracks(&uid)
             });
             match result {
-                Ok(items) => {
+                Ok(tracks) => {
+                    let items = tracks_to_values(tracks);
                     let ids: Vec<String> = items
                         .iter()
                         .filter_map(|item| {
@@ -1602,26 +2000,19 @@ impl qobject::PlayerBackend {
                 } else {
                     uid
                 };
-                client.playlists(&uid).map(|playlists| (client, playlists))
+                client.playlists(&uid)
             });
             match result {
-                Ok((client, playlists)) => {
+                Ok(playlists) => {
                     let items: Vec<Value> = playlists
                         .into_iter()
                         .map(|playlist| {
-                            let cover = if playlist.cover_url.is_empty() {
-                                String::new()
-                            } else {
-                                client
-                                    .image_data_url(&playlist.cover_url)
-                                    .unwrap_or_default()
-                            };
                             json!({
                                 "uuid": playlist.uuid,
                                 "kind": playlist.kind,
                                 "title": playlist.title,
                                 "trackCount": playlist.track_count,
-                                "coverUrl": cover,
+                                "coverUrl": playlist.cover_url,
                             })
                         })
                         .collect();
@@ -1641,18 +2032,11 @@ impl qobject::PlayerBackend {
         self.as_mut().set_error(QString::from(""));
         let sender = self.as_mut().event_sender();
         thread::spawn(move || {
-            let result = YandexClient::new(token).and_then(|client| {
-                let detail = client.album(&album_id)?;
-                Ok::<_, crate::yandex::Error>((client, detail))
-            });
+            let result = YandexClient::new(token).and_then(|client| client.album(&album_id));
             match result {
-                Ok((client, detail)) => {
-                    let cover = if detail.cover_url.is_empty() {
-                        String::new()
-                    } else {
-                        client.image_data_url(&detail.cover_url).unwrap_or_default()
-                    };
-                    let tracks = tracks_to_values(&client, detail.tracks);
+                Ok(detail) => {
+                    let cover = detail.cover_url.clone();
+                    let tracks = tracks_to_values(detail.tracks);
                     let payload = json!({
                         "id": detail.id,
                         "title": detail.title,
@@ -1681,18 +2065,11 @@ impl qobject::PlayerBackend {
         self.as_mut().set_error(QString::from(""));
         let sender = self.as_mut().event_sender();
         thread::spawn(move || {
-            let result = YandexClient::new(token).and_then(|client| {
-                let detail = client.artist(&artist_id)?;
-                Ok::<_, crate::yandex::Error>((client, detail))
-            });
+            let result = YandexClient::new(token).and_then(|client| client.artist(&artist_id));
             match result {
-                Ok((client, detail)) => {
-                    let cover = if detail.cover_url.is_empty() {
-                        String::new()
-                    } else {
-                        client.image_data_url(&detail.cover_url).unwrap_or_default()
-                    };
-                    let tracks = tracks_to_values(&client, detail.tracks);
+                Ok(detail) => {
+                    let cover = detail.cover_url.clone();
+                    let tracks = tracks_to_values(detail.tracks);
                     let payload = json!({
                         "id": detail.id,
                         "name": detail.name,
@@ -1718,18 +2095,12 @@ impl qobject::PlayerBackend {
         self.as_mut().set_error(QString::from(""));
         let sender = self.as_mut().event_sender();
         thread::spawn(move || {
-            let result = YandexClient::new(token).and_then(|client| {
-                let detail = client.playlist(&playlist_uuid)?;
-                Ok::<_, crate::yandex::Error>((client, detail))
-            });
+            let result =
+                YandexClient::new(token).and_then(|client| client.playlist(&playlist_uuid));
             match result {
-                Ok((client, detail)) => {
-                    let cover = if detail.cover_url.is_empty() {
-                        String::new()
-                    } else {
-                        client.image_data_url(&detail.cover_url).unwrap_or_default()
-                    };
-                    let tracks = tracks_to_values(&client, detail.tracks);
+                Ok(detail) => {
+                    let cover = detail.cover_url.clone();
+                    let tracks = tracks_to_values(detail.tracks);
                     let payload = json!({
                         "uuid": detail.uuid,
                         "kind": detail.kind,
@@ -1756,12 +2127,10 @@ impl qobject::PlayerBackend {
         self.as_mut().set_error(QString::from(""));
         let sender = self.as_mut().event_sender();
         thread::spawn(move || {
-            let result = YandexClient::new(token).and_then(|client| {
-                let tracks = client.feed_tracks()?;
-                Ok::<_, crate::yandex::Error>(tracks_to_values(&client, tracks))
-            });
+            let result = YandexClient::new(token).and_then(|client| client.feed_tracks());
             match result {
-                Ok(items) => {
+                Ok(tracks) => {
+                    let items = tracks_to_values(tracks);
                     let _ = sender.send(BackendEvent::Feed(Value::Array(items).to_string()));
                 }
                 Err(error) => {
@@ -1779,12 +2148,10 @@ impl qobject::PlayerBackend {
         self.as_mut().set_error(QString::from(""));
         let sender = self.as_mut().event_sender();
         thread::spawn(move || {
-            let result = YandexClient::new(token).and_then(|client| {
-                let tracks = client.history_tracks()?;
-                Ok::<_, crate::yandex::Error>(tracks_to_values(&client, tracks))
-            });
+            let result = YandexClient::new(token).and_then(|client| client.history_tracks());
             match result {
-                Ok(items) => {
+                Ok(tracks) => {
+                    let items = tracks_to_values(tracks);
                     let _ = sender.send(BackendEvent::History(Value::Array(items).to_string()));
                 }
                 Err(error) => {

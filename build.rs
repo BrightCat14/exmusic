@@ -21,11 +21,12 @@ fn main() {
                 "qml/Visualizer.qml",
                 "qml/IconButton.qml",
                 "qml/Icon.qml",
+                "qml/CoverArt.qml",
                 "qml/ThreeDotsMenu.qml",
                 "qml/NowPlayingBar.qml",
                 "qml/FullViewPlayer.qml",
             ],
-            qrc_files: &["assets/fa-solid-900.ttf", "qml/VisualizerShader.frag.qsb"],
+            qrc_files: &["assets/fa-solid-900.ttf", "qml/VisualizerShader.frag.qsb", "qml/RoundedMask.frag.qsb"],
             ..Default::default()
         })
         .build();

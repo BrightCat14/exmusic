@@ -118,14 +118,14 @@ Rectangle {
                     Rectangle {
                         width: 40; height: 40; radius: 6; clip: true; color: "#302842"
                         anchors.verticalCenter: parent.verticalCenter
-                        Image {
+                        CoverArt {
+                            id: playlistArt
                             anchors.fill: parent
+                            radius: 6
+                            backgroundColor: "transparent"
                             source: modelData.coverUrl || ""
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
                         }
-                        Text { anchors.centerIn: parent; text: (modelData.coverUrl || "").length ? "" : "♪"; color: "#cfc4e6"; font.pixelSize: 15 }
+                        Text { anchors.centerIn: parent; text: playlistArt.hasImage ? "" : "♪"; color: "#cfc4e6"; font.pixelSize: 15 }
                     }
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
@@ -168,23 +168,14 @@ Rectangle {
             width: 40; height: 40; radius: 20; color: "#302842"
             border { width: 2; color: "#9b7df5" }
             clip: true
-            Image { id: avatarSource; anchors.fill: parent; source: player ? player.avatar_url : ""; fillMode: Image.PreserveAspectCrop; cache: true; asynchronous: true; visible: false }
-            Canvas {
-                id: roundedAvatar
+            CoverArt {
+                id: avatarArt
                 anchors.fill: parent
-                onPaint: {
-                    var ctx = getContext("2d")
-                    var r = width / 2
-                    ctx.reset()
-                    ctx.beginPath()
-                    ctx.arc(r, r, r, 0, Math.PI * 2)
-                    ctx.clip()
-                    if (avatarSource.status === Image.Ready)
-                        ctx.drawImage(avatarSource, 0, 0, width, height)
-                }
+                radius: 20
+                backgroundColor: "transparent"
+                source: player ? player.avatar_url : ""
             }
-            Connections { target: avatarSource; function onStatusChanged() { roundedAvatar.requestPaint() } }
-            Icon { anchors.centerIn: parent; glyph: "\uf007"; tint: "#e9e1ff"; font.pixelSize: 16; visible: !player || !player.avatar_url.length }
+            Icon { anchors.centerIn: parent; glyph: "\uf007"; tint: "#e9e1ff"; font.pixelSize: 16; visible: !avatarArt.hasImage }
         }
         Column {
             y: (parent.height - height) / 2

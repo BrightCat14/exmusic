@@ -60,6 +60,7 @@ pub struct TrackItem {
     pub album: String,
     pub album_id: String,
     pub cover_url: String,
+    pub cover_source_url: String,
     pub duration_ms: i64,
 }
 
@@ -305,11 +306,11 @@ impl YandexClient {
         })
     }
 
-    pub fn wave_next(&self, session_id: &str, batch_id: &str) -> Result<WaveBatch, Error> {
+    pub fn wave_next(&self, session_id: &str, queue: &[String]) -> Result<WaveBatch, Error> {
         let response: Value = self
             .http
             .post(format!("{API_URL}/rotor/session/{session_id}/tracks"))
-            .form(&[("batch-id", batch_id)])
+            .json(&serde_json::json!({ "queue": queue }))
             .headers(self.api_headers())
             .send()
             .map_err(Error::Request)?
@@ -318,17 +319,11 @@ impl YandexClient {
             .json()
             .map_err(Error::Request)?;
         let result = result_value(response);
-        let session_id = result
-            .get("radioSessionId")
-            .or_else(|| result.get("radio_session_id"))
-            .and_then(Value::as_str)
-            .unwrap_or(session_id)
-            .to_owned();
         let batch_id = result
             .get("batchId")
             .or_else(|| result.get("batch_id"))
             .and_then(Value::as_str)
-            .unwrap_or(batch_id)
+            .unwrap_or_default()
             .to_owned();
         let tracks: Vec<TrackItem> = result
             .get("sequence")
@@ -342,17 +337,41 @@ impl YandexClient {
             })
             .unwrap_or_default();
         Ok(WaveBatch {
-            session_id,
+            session_id: session_id.to_owned(),
             batch_id,
             tracks,
         })
     }
 
-    pub fn wave_feedback(&self, session_id: &str, event: &str) -> Result<(), Error> {
+    pub fn wave_feedback(
+        &self,
+        session_id: &str,
+        event_type: &str,
+        batch_id: &str,
+        track_id: Option<&str>,
+        total_played_seconds: Option<f64>,
+    ) -> Result<(), Error> {
+        let mut event = serde_json::json!({
+            "type": event_type,
+            "timestamp": timestamp_now_iso(),
+        });
+        if let Some(track_id) = track_id.filter(|track_id| !track_id.is_empty()) {
+            event["trackId"] = Value::String(track_id.to_owned());
+        }
+        if let Some(seconds) = total_played_seconds {
+            event["totalPlayedSeconds"] = serde_json::json!(seconds);
+        }
         let response = self
             .http
             .post(format!("{API_URL}/rotor/session/{session_id}/feedback"))
-            .form(&[("event", event)])
+            .json(&serde_json::json!({
+                "event": event,
+                "batchId": if batch_id.is_empty() {
+                    Value::Null
+                } else {
+                    Value::String(batch_id.to_owned())
+                },
+            }))
             .headers(self.api_headers())
             .send()
             .map_err(Error::Request)?;
@@ -606,11 +625,7 @@ impl YandexClient {
                 .map(id_string)
                 .unwrap_or_default(),
             year: result.get("year").and_then(Value::as_i64).unwrap_or(0),
-            cover_url: result
-                .get("coverUri")
-                .and_then(Value::as_str)
-                .map(cover_uri_to_url)
-                .unwrap_or_default(),
+            cover_url: cover_url_field(&result),
             duration_ms: result
                 .get("durationMs")
                 .and_then(Value::as_i64)
@@ -623,19 +638,18 @@ impl YandexClient {
         let info_response = self.get_json(&format!("{API_URL}/artists/{artist_id}/info"))?;
         let info = result_value(info_response);
         let artist = info.get("artist").cloned().unwrap_or(Value::Null);
-        let cover_url = artist
-            .get("cover")
-            .and_then(|cover| cover.get("uri"))
-            .and_then(Value::as_str)
-            .or_else(|| {
+        let cover_url = {
+            let primary = cover_url_field(&artist);
+            if !primary.is_empty() {
+                primary
+            } else {
                 info.get("covers")
                     .and_then(Value::as_array)
                     .and_then(|covers| covers.first())
-                    .and_then(|cover| cover.get("uri"))
-                    .and_then(Value::as_str)
-            })
-            .map(cover_uri_to_url)
-            .unwrap_or_default();
+                    .map(cover_url_field)
+                    .unwrap_or_default()
+            }
+        };
         let tracks_response = self.get_json(&format!(
             "{API_URL}/artists/{artist_id}/tracks?page=0&page-size=100"
         ))?;
@@ -994,29 +1008,6 @@ impl YandexClient {
         Ok(response)
     }
 
-    pub fn image_data_url(&self, url: &str) -> Result<String, Error> {
-        let response = self
-            .http
-            .get(url)
-            .send()
-            .map_err(Error::Request)?
-            .error_for_status()
-            .map_err(Error::Request)?;
-        let mime = response
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.split(';').next())
-            .filter(|value| value.starts_with("image/"))
-            .unwrap_or("image/jpeg")
-            .to_owned();
-        let bytes = response.bytes().map_err(Error::Request)?;
-        Ok(format!(
-            "data:{mime};base64,{}",
-            base64::engine::general_purpose::STANDARD.encode(bytes)
-        ))
-    }
-
     fn get_json(&self, url: &str) -> Result<Value, Error> {
         self.http
             .get(url)
@@ -1058,6 +1049,38 @@ fn result_value(response: Value) -> Value {
     response.get("result").cloned().unwrap_or(response)
 }
 
+fn timestamp_now_iso() -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let seconds = now.as_secs() as i64;
+    let millis = now.subsec_millis();
+    let days = seconds.div_euclid(86_400);
+    let rem = seconds.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    let hour = rem / 3_600;
+    let minute = (rem % 3_600) / 60;
+    let second = rem % 60;
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{millis:03}Z")
+}
+
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    (
+        if month <= 2 { year + 1 } else { year },
+        month as u32,
+        day as u32,
+    )
+}
+
 fn string_field(value: &Value, key: &str) -> String {
     value
         .get(key)
@@ -1075,19 +1098,61 @@ fn id_string(value: &Value) -> String {
 }
 
 fn cover_uri_to_url(uri: &str) -> String {
+    cover_uri_to_url_sized(uri, "600x600")
+}
+
+fn cover_uri_to_url_sized(uri: &str, size: &str) -> String {
     if uri.is_empty() {
-        String::new()
-    } else {
-        format!("https://{}", uri.replace("%%", "200x200"))
+        return String::new();
     }
+    let url = if uri.contains("%%") {
+        uri.replace("%%", size)
+    } else {
+        uri.to_owned()
+    };
+    // Qt's HTTP/2 client gets REFUSED_STREAM from the Yandex image CDN when
+    // several covers load at once, which made artwork appear intermittently.
+    // The CDN serves the same public images over HTTP/1.1, so use plain HTTP
+    // for artwork URLs handed to QML.
+    let url = url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_start_matches("//");
+    format!("http://{url}")
+}
+
+fn cover_uri_value(value: &Value) -> Option<&str> {
+    value
+        .get("coverUri")
+        .or_else(|| value.get("cover_uri"))
+        .and_then(Value::as_str)
+        .or_else(|| {
+            value.get("cover").and_then(|cover| {
+                cover
+                    .get("uri")
+                    .or_else(|| {
+                        cover
+                            .get("itemsUri")
+                            .and_then(Value::as_array)
+                            .and_then(|items| items.first())
+                    })
+                    .and_then(Value::as_str)
+            })
+        })
+}
+
+fn cover_url_field(value: &Value) -> String {
+    cover_uri_value(value)
+        .map(cover_uri_to_url)
+        .unwrap_or_default()
 }
 
 fn playlist_cover(playlist: &Value) -> String {
-    let direct = playlist
-        .get("cover")
-        .and_then(|cover| cover.get("uri"))
-        .and_then(Value::as_str);
-    let fallback = playlist
+    let direct = cover_url_field(playlist);
+    if !direct.is_empty() {
+        return direct;
+    }
+    playlist
         .get("tracks")
         .and_then(Value::as_array)
         .and_then(|tracks| tracks.first())
@@ -1097,11 +1162,7 @@ fn playlist_cover(playlist: &Value) -> String {
                 .filter(|track| !track.is_null())
                 .unwrap_or(track)
         })
-        .and_then(|track| track.get("coverUri"))
-        .and_then(Value::as_str);
-    direct
-        .or(fallback)
-        .map(cover_uri_to_url)
+        .map(cover_url_field)
         .unwrap_or_default()
 }
 
@@ -1168,11 +1229,13 @@ fn track_item(value: &Value) -> Option<TrackItem> {
         .unwrap_or("")
         .to_owned();
     let album_id = album_node.map(id_string).unwrap_or_default();
-    let cover_url = value
-        .get("coverUri")
-        .or_else(|| value.get("cover_uri"))
-        .and_then(Value::as_str)
-        .map(|uri| format!("https://{}", uri.replace("%%", "200x200")))
+    let cover_uri =
+        cover_uri_value(value).or_else(|| album_node.and_then(cover_uri_value));
+    let cover_url = cover_uri
+        .map(|uri| cover_uri_to_url_sized(uri, "200x200"))
+        .unwrap_or_default();
+    let cover_source_url = cover_uri
+        .map(|uri| cover_uri_to_url_sized(uri, "600x600"))
         .unwrap_or_default();
     Some(TrackItem {
         id,
@@ -1182,6 +1245,7 @@ fn track_item(value: &Value) -> Option<TrackItem> {
         album,
         album_id,
         cover_url,
+        cover_source_url,
         duration_ms: value
             .get("durationMs")
             .or_else(|| value.get("duration_ms"))

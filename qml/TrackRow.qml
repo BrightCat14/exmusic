@@ -44,40 +44,16 @@ Item {
             width: 44; height: 44; radius: 9; clip: true
             anchors.verticalCenter: parent.verticalCenter
             color: "#302842"
-            Image {
-                id: coverSource
+            CoverArt {
+                id: coverArt
                 anchors.fill: parent
-                source: row.track.coverUrl || ""
-                fillMode: Image.PreserveAspectCrop
-                cache: true
-                asynchronous: true
-                visible: false
+                radius: 9
+                backgroundColor: "transparent"
+                source: row.track.coverSourceUrl || row.track.coverUrl || ""
             }
-            Canvas {
-                id: roundedCover
-                anchors.fill: parent
-                onPaint: {
-                    var ctx = getContext("2d")
-                    var r = 9
-                    ctx.reset()
-                    ctx.beginPath()
-                    ctx.moveTo(r, 0); ctx.lineTo(width - r, 0)
-                    ctx.arc(width - r, r, r, -Math.PI / 2, 0)
-                    ctx.lineTo(width, height - r)
-                    ctx.arc(width - r, height - r, r, 0, Math.PI / 2)
-                    ctx.lineTo(r, height)
-                    ctx.arc(r, height - r, r, Math.PI / 2, Math.PI)
-                    ctx.lineTo(0, r)
-                    ctx.arc(r, r, r, Math.PI, Math.PI * 1.5)
-                    ctx.clip()
-                    if (coverSource.status === Image.Ready)
-                        ctx.drawImage(coverSource, 0, 0, width, height)
-                }
-            }
-            Connections { target: coverSource; function onStatusChanged() { roundedCover.requestPaint() } }
             Text {
                 anchors.centerIn: parent
-                text: (row.track.coverUrl || "").length ? "" : "♪"
+                text: coverArt.hasImage ? "" : "♪"
                 color: "#e9e1ff"
                 font { pixelSize: 20; bold: true }
             }

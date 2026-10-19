@@ -58,37 +58,14 @@ Item {
                 width: 46; height: 46; radius: 8
                 anchors.verticalCenter: parent.verticalCenter
                 color: "#2a2338"
-                Image {
-                    id: barCover
+                CoverArt {
+                    id: barCoverArt
                     anchors.fill: parent
+                    radius: 8
+                    backgroundColor: "transparent"
                     source: player ? player.cover_url : ""
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    visible: false
                 }
-                Canvas {
-                    id: barCoverCanvas
-                    anchors.fill: parent
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        var r = 8
-                        ctx.reset()
-                        ctx.beginPath()
-                        ctx.moveTo(r, 0); ctx.lineTo(width - r, 0)
-                        ctx.arc(width - r, r, r, -Math.PI / 2, 0)
-                        ctx.lineTo(width, height - r)
-                        ctx.arc(width - r, height - r, r, 0, Math.PI / 2)
-                        ctx.lineTo(r, height)
-                        ctx.arc(r, height - r, r, Math.PI / 2, Math.PI)
-                        ctx.lineTo(0, r)
-                        ctx.arc(r, r, r, Math.PI, Math.PI * 1.5)
-                        ctx.clip()
-                        if (barCover.status === Image.Ready)
-                            ctx.drawImage(barCover, 0, 0, width, height)
-                    }
-                }
-                Connections { target: barCover; function onStatusChanged() { barCoverCanvas.requestPaint() } }
-                Icon { anchors.centerIn: parent; glyph: "\uf001"; tint: "#cfc4e6"; font.pixelSize: 16; visible: !player || !player.cover_url.length }
+                Icon { anchors.centerIn: parent; glyph: "\uf001"; tint: "#cfc4e6"; font.pixelSize: 16; visible: !barCoverArt.hasImage }
             }
 
             Column {
