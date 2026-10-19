@@ -13,6 +13,87 @@ fn default_discord_client_id() -> String {
     DEFAULT_DISCORD_CLIENT_ID.to_owned()
 }
 
+pub fn system_language() -> String {
+    let mut candidates: Vec<String> = Vec::new();
+
+    #[cfg(target_os = "windows")]
+    if let Some(locale) = windows_preferred_locale() {
+        candidates.push(locale);
+    }
+
+    for key in ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"] {
+        if let Ok(value) = std::env::var(key) {
+            for part in value.split(':') {
+                let part = part.trim();
+                if !part.is_empty() {
+                    candidates.push(part.to_owned());
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    if let Some(locale) = macos_preferred_locale() {
+        candidates.push(locale);
+    }
+
+    candidates
+        .iter()
+        .find_map(|locale| language_code(locale))
+        .unwrap_or_else(|| "en".to_owned())
+}
+
+fn language_code(locale: &str) -> Option<String> {
+    let normalized = locale.trim().to_ascii_lowercase().replace('_', "-");
+    let primary = normalized
+        .split(|c| c == '.' || c == '@' || c == '-')
+        .next()
+        .unwrap_or("");
+    match primary {
+        "ru" => Some("ru".to_owned()),
+        "en" => Some("en".to_owned()),
+        _ => None,
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn windows_preferred_locale() -> Option<String> {
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+
+    const LOCALE_NAME_MAX_LENGTH: usize = 85;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetUserDefaultLocaleName(locale_name: *mut u16, locale_name_length: i32) -> i32;
+    }
+
+    let mut buffer = [0u16; LOCALE_NAME_MAX_LENGTH];
+    let length =
+        unsafe { GetUserDefaultLocaleName(buffer.as_mut_ptr(), LOCALE_NAME_MAX_LENGTH as i32) };
+    if length <= 1 {
+        return None;
+    }
+    OsString::from_wide(&buffer[..length as usize - 1])
+        .into_string()
+        .ok()
+}
+
+#[cfg(target_os = "macos")]
+fn macos_preferred_locale() -> Option<String> {
+    let output = std::process::Command::new("/usr/bin/defaults")
+        .args(["read", "-g", "AppleLocale"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IntegrationConfig {
     #[serde(default)]
@@ -106,6 +187,37 @@ fn config_path() -> Option<std::path::PathBuf> {
             .join("exmusic")
             .join("integrations.json"),
     )
+}
+
+fn language_path() -> Option<std::path::PathBuf> {
+    Some(
+        dirs::data_local_dir()
+            .or_else(dirs::home_dir)?
+            .join("exmusic")
+            .join("language"),
+    )
+}
+
+pub fn load_language() -> String {
+    language_path()
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| {
+            !value.is_empty()
+                && value.chars().all(|character| {
+                    character.is_ascii_alphanumeric() || character == '-' || character == '_'
+                })
+        })
+        .unwrap_or_else(system_language)
+}
+
+pub fn save_language(language: &str) -> Result<(), String> {
+    let path =
+        language_path().ok_or_else(|| "Could not locate a writable data directory".to_string())?;
+    if let Some(directory) = path.parent() {
+        std::fs::create_dir_all(directory).map_err(|error| error.to_string())?;
+    }
+    std::fs::write(path, language).map_err(|error| error.to_string())
 }
 
 pub fn load_config() -> IntegrationConfig {

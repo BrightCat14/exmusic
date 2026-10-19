@@ -33,7 +33,7 @@ Item {
             return (info.artist || "") + year
         }
         if (kind === "playlist") {
-            return (info.owner || "") + (info.trackCount ? " · " + info.trackCount + " треков" : "")
+            return (info.owner || "") + (info.trackCount ? " · " + player.tracks(player.language, info.trackCount) : "")
         }
         return info.description || ""
     }
@@ -61,7 +61,7 @@ Item {
                 width: 90; height: 32; radius: 16
                 anchors.verticalCenter: parent.verticalCenter
                 color: backBtn.containsMouse ? "#3b2e59" : "#2b233c"
-                Text { anchors.centerIn: parent; text: "← Назад"; color: "#e8ddff"; font.pixelSize: 13 }
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.back"); color: "#e8ddff"; font.pixelSize: 13 }
                 MouseArea {
                     id: backBtn
                     anchors.fill: parent
@@ -99,9 +99,9 @@ Item {
                 spacing: 8
                 Text {
                     text: {
-                        if (kind === "album") return "Альбом"
-                        if (kind === "artist") return "Исполнитель"
-                        return "Плейлист"
+                        if (kind === "album") return player.tr(player.language, "detail.album")
+                        if (kind === "artist") return player.tr(player.language, "detail.artist")
+                        return player.tr(player.language, "detail.playlist")
                     }
                     color: "#9b7df5"
                     font { pixelSize: 13; bold: true; letterSpacing: 1 }
@@ -124,7 +124,7 @@ Item {
                 Rectangle {
                     width: 150; height: 40; radius: 20
                     color: playAll.containsMouse ? "#a98cf7" : "#9b7df5"
-                    Text { anchors.centerIn: parent; text: "▶ Слушать всё"; color: "#1a1326"; font.bold: true; font.pixelSize: 13 }
+                    Text { anchors.centerIn: parent; text: player.tr(player.language, "detail.playAll"); color: "#1a1326"; font.bold: true; font.pixelSize: 13 }
                     MouseArea {
                         id: playAll
                         anchors.fill: parent
@@ -139,7 +139,7 @@ Item {
 
         Text {
             visible: !root.info.tracks || root.info.tracks.length === 0
-            text: root.player.loading ? "Загрузка..." : "Нет треков"
+            text: root.player.loading ? player.tr(player.language, "common.loading") : player.tr(player.language, "detail.noTracks")
             color: "#aaa4b5"
             font.pixelSize: 13
         }

@@ -168,6 +168,7 @@ Item {
                 width: 48; height: 48
                 ThreeDotsMenu {
                     anchors.fill: parent
+                    player: root.player
                     onLyricsRequested: { root.lyricsOpen = !root.lyricsOpen; root.queueOpen = false }
                     onQueueRequested: { root.queueOpen = !root.queueOpen; root.lyricsOpen = false }
                 }
@@ -200,7 +201,7 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "Текст песни"; color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "lyrics.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
                 Text { text: "✕"; color: "#aaa4b5"; font.pixelSize: 16
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -214,7 +215,7 @@ Item {
                 Text {
                     id: lyricsText
                     width: parent.width
-                    text: player && player.lyric.length ? player.lyric : "Текст появится после загрузки трека"
+                    text: player && player.lyric.length ? player.lyric : player.tr(player.language, "lyrics.empty")
                     color: "#d7cfdf"
                     font.pixelSize: 14
                     wrapMode: Text.Wrap
@@ -241,7 +242,7 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "Очередь"; color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "queue.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
                 Text { text: "✕"; color: "#aaa4b5"; font.pixelSize: 16
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter

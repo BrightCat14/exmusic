@@ -75,7 +75,7 @@ Item {
                 Text {
                     width: parent.width
                     elide: Text.ElideRight
-                    text: player && player.title.length ? player.title : "Ничего не играет"
+                    text: player && player.title.length ? player.title : player.tr(player.language, "nowPlaying.nothing")
                     color: "#f4f0f7"
                     font { pixelSize: 14; bold: true }
                 }

@@ -13,11 +13,11 @@ Rectangle {
     color: "#131019"
 
     readonly property var nav: [
-        { icon: "\uf002", label: "Поиск", target: "search" },
-        { icon: "\uf001", label: "Моя волна", target: "wave" },
-        { icon: "\uf005", label: "Для вас и Тренды", target: "feed" },
-        { icon: "\uf004", label: "Коллекция", target: "collection" },
-        { icon: "\uf017", label: "История", target: "history" }
+        { icon: "\uf002", label: "nav.search", target: "search" },
+        { icon: "\uf001", label: "nav.wave", target: "wave" },
+        { icon: "\uf005", label: "nav.feed", target: "feed" },
+        { icon: "\uf004", label: "nav.collection", target: "collection" },
+        { icon: "\uf017", label: "nav.history", target: "history" }
     ]
 
     function refreshPlaylists() {
@@ -80,7 +80,7 @@ Rectangle {
                     spacing: 12
                     Icon { glyph: modelData.icon; tint: root.current === modelData.target ? "#d8ccff" : "#8e8899"; font.pixelSize: 18; width: 40; horizontalAlignment: Text.AlignHCenter }
                     Text {
-                        text: modelData.label
+                        text: player.tr(player.language, modelData.label)
                         color: root.current === modelData.target ? "#ffffff" : "#aaa4b5"
                         font { pixelSize: 14; bold: root.current === modelData.target }
                     }
@@ -107,7 +107,7 @@ Rectangle {
 
         Text {
             visible: root.playlists.length > 0
-            text: "Плейлисты"
+            text: player.tr(player.language, "sidebar.playlists")
             color: "#7d7689"
             font { pixelSize: 11; bold: true; letterSpacing: 1 }
         }
@@ -147,7 +147,7 @@ Rectangle {
                             width: parent.width
                             elide: Text.ElideRight
                         }
-                        Text { text: modelData.trackCount + " треков"; color: "#9a9a9a"; font.pixelSize: 12 }
+                        Text { text: player.tracks(player.language, modelData.trackCount); color: "#9a9a9a"; font.pixelSize: 12 }
                     }
                 }
                 MouseArea {
@@ -166,7 +166,7 @@ Rectangle {
         anchors { left: parent.left; bottom: profile.top; leftMargin: 16; bottomMargin: 20 }
         spacing: 12
         Icon { glyph: "\uf013"; tint: "#aaa4b5"; font.pixelSize: 17; width: 40; horizontalAlignment: Text.AlignHCenter }
-        Text { text: "Настройки"; color: "#aaa4b5"; font.pixelSize: 14 }
+        Text { text: player.tr(player.language, "sidebar.settings"); color: "#aaa4b5"; font.pixelSize: 14 }
     }
     MouseArea { anchors.fill: settings; cursorShape: Qt.PointingHandCursor; onClicked: root.settingsRequested() }
 

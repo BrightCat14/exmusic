@@ -30,6 +30,7 @@ fn main() {
                 "qml/ThreeDotsMenu.qml",
                 "qml/NowPlayingBar.qml",
                 "qml/FullViewPlayer.qml",
+                "qml/LanguageSelector.qml",
             ],
             qrc_files: &[
                 "assets/fa-solid-900.ttf",

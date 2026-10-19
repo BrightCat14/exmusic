@@ -57,16 +57,32 @@ Item {
             anchors { left: parent.left; right: parent.right; top: parent.top }
             anchors.margins: 32
             spacing: 24
-            Text { text: "Settings"; color: "#f7f3fa"; font { pixelSize: 32; weight: Font.Black } }
-            Text { text: "Playback, appearance and integrations"; color: "#aaa4b5"; font.pixelSize: 14 }
+            Text { text: player.tr(player.language, "settings.title"); color: "#f7f3fa"; font { pixelSize: 32; weight: Font.Black } }
+            Text { text: player.tr(player.language, "settings.subtitle"); color: "#aaa4b5"; font.pixelSize: 14 }
+
+            Rectangle {
+                width: parent.width; height: 82; radius: 16; color: "#1d1728"
+                z: languageSelector.open ? 50 : 0
+                Column {
+                    anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
+                    spacing: 5
+                    Text { text: player.tr(player.language, "settings.language"); color: "#f4f0f7"; font.bold: true }
+                    Text { text: player.tr(player.language, "settings.languageHint"); color: "#aaa4b5"; font.pixelSize: 12 }
+                }
+                LanguageSelector {
+                    id: languageSelector
+                    player: root.player
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 20 }
+                }
+            }
 
             Rectangle {
                 width: parent.width; height: 82; radius: 16; color: "#1d1728"
                 Column {
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
                     spacing: 5
-                    Text { text: "Visualizer"; color: "#f4f0f7"; font.bold: true }
-                    Text { text: "Show the reactive background on the player"; color: "#aaa4b5"; font.pixelSize: 12 }
+                    Text { text: player.tr(player.language, "settings.visualizer"); color: "#f4f0f7"; font.bold: true }
+                    Text { text: player.tr(player.language, "settings.visualizerHint"); color: "#aaa4b5"; font.pixelSize: 12 }
                 }
                 Rectangle {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 20 }
@@ -81,7 +97,7 @@ Item {
                 width: parent.width; height: 112; radius: 16; color: "#1d1728"
                 Column { anchors.fill: parent; anchors.margins: 20; spacing: 12
                     Row { width: parent.width
-                        Text { text: "Volume"; color: "#f4f0f7"; font.bold: true }
+                        Text { text: player.tr(player.language, "settings.volume"); color: "#f4f0f7"; font.bold: true }
                         Item { width: parent.width - 100; height: 1 }
                         Text { text: player.volume_percent + "%"; color: "#c4b0ff"; font.bold: true }
                     }
@@ -107,12 +123,12 @@ Item {
                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
                     spacing: 14
 
-                    Text { text: "Integrations"; color: "#f4f0f7"; font.bold: true }
-                    Text { text: "Share what you are listening to on Discord and scrobble plays to Last.fm."; color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap }
+                    Text { text: player.tr(player.language, "settings.integrations"); color: "#f4f0f7"; font.bold: true }
+                    Text { text: player.tr(player.language, "settings.integrationsHint"); color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap }
 
                     Row {
                         width: parent.width
-                        Text { text: "Discord Rich Presence"; color: "#ddd6e6"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: player.tr(player.language, "settings.discord"); color: "#ddd6e6"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
                         Item { width: parent.width - 160; height: 1 }
                         Rectangle {
                             width: 52; height: 30; radius: 15
@@ -127,13 +143,13 @@ Item {
                             id: discordClientId
                             anchors.fill: parent; anchors.margins: 10
                             color: "white"; selectByMouse: true; clip: true
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Discord application client ID"; color: "#8f879c"; visible: !parent.text.length }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.discordClientId"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
 
                     Row {
                         width: parent.width
-                        Text { text: "Last.fm scrobbling"; color: "#ddd6e6"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: player.tr(player.language, "settings.lastfm"); color: "#ddd6e6"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
                         Item { width: parent.width - 160; height: 1 }
                         Rectangle {
                             width: 52; height: 30; radius: 15
@@ -148,7 +164,7 @@ Item {
                             id: lastfmApiKey
                             anchors.fill: parent; anchors.margins: 10
                             color: "white"; selectByMouse: true; clip: true
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Last.fm API key"; color: "#8f879c"; visible: !parent.text.length }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmKey"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
                     Rectangle {
@@ -157,7 +173,7 @@ Item {
                             id: lastfmApiSecret
                             anchors.fill: parent; anchors.margins: 10
                             color: "white"; echoMode: TextInput.Password; selectByMouse: true; clip: true
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Last.fm API secret"; color: "#8f879c"; visible: !parent.text.length }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmSecret"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
                     Rectangle {
@@ -166,7 +182,7 @@ Item {
                             id: lastfmUsername
                             anchors.fill: parent; anchors.margins: 10
                             color: "white"; selectByMouse: true; clip: true
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Last.fm username (optional)"; color: "#8f879c"; visible: !parent.text.length }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmUsername"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
                     Rectangle {
@@ -175,7 +191,7 @@ Item {
                             id: lastfmPassword
                             anchors.fill: parent; anchors.margins: 10
                             color: "white"; echoMode: TextInput.Password; selectByMouse: true; clip: true
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Last.fm password (optional, or use a session key)"; color: "#8f879c"; visible: !parent.text.length }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmPassword"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
                     Rectangle {
@@ -184,7 +200,7 @@ Item {
                             id: lastfmSessionKey
                             anchors.fill: parent; anchors.margins: 10
                             color: "white"; selectByMouse: true; clip: true
-                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Last.fm session key (optional)"; color: "#8f879c"; visible: !parent.text.length }
+                            Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmSession"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
 
@@ -194,7 +210,7 @@ Item {
                         Rectangle {
                             width: 120; height: 40; radius: 10
                             color: saveMouse.containsMouse ? "#c4b0ff" : "#a98cf0"
-                            Text { anchors.centerIn: parent; text: "Save"; color: "#20192c"; font.bold: true }
+                            Text { anchors.centerIn: parent; text: player.tr(player.language, "common.save"); color: "#20192c"; font.bold: true }
                             MouseArea { id: saveMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.saveConfig(null) }
                         }
                         Text {

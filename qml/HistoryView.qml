@@ -42,7 +42,7 @@ Item {
             spacing: 16
             Text {
                 id: titleText
-                text: "История"
+                text: player.tr(player.language, "history.title")
                 color: "#f7f3fa"
                 font { pixelSize: 30; weight: Font.Black }
                 anchors.verticalCenter: parent.verticalCenter
@@ -52,7 +52,7 @@ Item {
                 width: 110; height: 38; radius: 19
                 anchors.verticalCenter: parent.verticalCenter
                 color: refreshBtn.containsMouse ? "#3b2e59" : "#2b233c"
-                Text { anchors.centerIn: parent; text: "Обновить"; color: "#e8ddff"; font.bold: true; font.pixelSize: 13 }
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.refresh"); color: "#e8ddff"; font.bold: true; font.pixelSize: 13 }
                 MouseArea {
                     id: refreshBtn
                     anchors.fill: parent
@@ -65,8 +65,8 @@ Item {
 
         Text {
             text: root.player.loading && root.tracks.length === 0
-                  ? "Загрузка..."
-                  : (root.tracks.length ? root.tracks.length + " недавних треков" : "Здесь появится история прослушивания")
+                  ? player.tr(player.language, "common.loading")
+                  : (root.tracks.length ? player.tr(player.language, "history.count").replace("%1", player.tracks(player.language, root.tracks.length)) : player.tr(player.language, "history.empty"))
             color: "#aaa4b5"
             font.pixelSize: 13
         }

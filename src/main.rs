@@ -1,3 +1,4 @@
+mod i18n;
 mod integrations;
 mod player;
 mod yandex;

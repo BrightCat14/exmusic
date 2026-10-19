@@ -4,6 +4,7 @@ Item {
     id: root
     property bool open: false
     property string direction: "down"
+    property var player
 
     signal lyricsRequested()
     signal queueRequested()
@@ -38,12 +39,12 @@ Item {
 
             MenuRow {
                 glyph: "\uf075"
-                label: "Текст песни"
+                label: player ? player.tr(player.language, "lyrics.title") : ""
                 onTriggered: { root.lyricsRequested(); root.open = false }
             }
             MenuRow {
                 glyph: "\uf142"
-                label: "Очередь"
+                label: player ? player.tr(player.language, "queue.title") : ""
                 onTriggered: { root.queueRequested(); root.open = false }
             }
         }

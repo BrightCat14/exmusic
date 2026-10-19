@@ -468,6 +468,7 @@ pub mod qobject {
         #[qproperty(i32, duration_ms)]
         #[qproperty(i32, position_ms)]
         #[qproperty(i32, volume_percent)]
+        #[qproperty(QString, language)]
         #[qproperty(QString, login_state)]
         #[qproperty(f64, visual_bass)]
         #[qproperty(f64, visual_mid)]
@@ -481,7 +482,15 @@ pub mod qobject {
         #[qproperty(bool, lastfm_enabled)]
         #[qproperty(QString, integration_status)]
         #[qproperty(QString, integration_config_json)]
+        #[qproperty(QString, languages_json)]
         type PlayerBackend = super::PlayerBackendRust;
+
+        #[qinvokable]
+        fn tr(self: Pin<&mut PlayerBackend>, language: QString, key: QString) -> QString;
+        #[qinvokable]
+        fn tracks(self: Pin<&mut PlayerBackend>, language: QString, count: i32) -> QString;
+        #[qinvokable]
+        fn favorites(self: Pin<&mut PlayerBackend>, language: QString, count: i32) -> QString;
 
         #[qinvokable]
         fn save_integration_config(self: Pin<&mut PlayerBackend>, config_json: QString);
@@ -508,6 +517,8 @@ pub mod qobject {
         fn set_volume(self: Pin<&mut PlayerBackend>, volume_percent: i32);
         #[qinvokable]
         fn set_visualizer(self: Pin<&mut PlayerBackend>, enabled: bool);
+        #[qinvokable]
+        fn set_ui_language(self: Pin<&mut PlayerBackend>, language: QString);
         #[qinvokable]
         fn toggle_play(self: Pin<&mut PlayerBackend>);
         #[qinvokable]
@@ -575,6 +586,7 @@ pub struct PlayerBackendRust {
     duration_ms: i32,
     position_ms: i32,
     volume_percent: i32,
+    language: QString,
     visual_bass: f64,
     visual_mid: f64,
     visual_high: f64,
@@ -588,6 +600,8 @@ pub struct PlayerBackendRust {
     lastfm_enabled: bool,
     integration_status: QString,
     integration_config_json: QString,
+    languages_json: QString,
+    translations: crate::i18n::Translations,
     integration_config: integrations::IntegrationConfig,
     integrations: Option<integrations::Integrations>,
     current_album: String,
@@ -624,6 +638,8 @@ impl Default for PlayerBackendRust {
         let integration_config_json =
             serde_json::to_string(&integration_config).unwrap_or_else(|_| "{}".to_owned());
         let integrations_handle = integrations::spawn(integration_config.clone());
+        let translations = crate::i18n::Translations::load();
+        let languages_json = translations.languages_json();
         Self {
             playing: false,
             liked: false,
@@ -656,6 +672,7 @@ impl Default for PlayerBackendRust {
             duration_ms: 0,
             position_ms: 0,
             volume_percent: 100,
+            language: QString::from(integrations::load_language()),
             visual_bass: 0.0,
             visual_mid: 0.0,
             visual_high: 0.0,
@@ -669,6 +686,8 @@ impl Default for PlayerBackendRust {
             lastfm_enabled: integration_config.lastfm_enabled,
             integration_status: QString::from(""),
             integration_config_json: QString::from(integration_config_json),
+            languages_json: QString::from(languages_json),
+            translations,
             integration_config,
             integrations: Some(integrations_handle),
             current_album: String::new(),
@@ -1064,6 +1083,48 @@ impl qobject::PlayerBackend {
 
     fn set_visualizer(mut self: Pin<&mut Self>, enabled: bool) {
         self.as_mut().set_visualizer_enabled(enabled);
+    }
+
+    fn tr(self: Pin<&mut Self>, language: QString, key: QString) -> QString {
+        let language = language.to_string();
+        let key = key.to_string();
+        QString::from(
+            self.as_ref()
+                .get_ref()
+                .rust()
+                .translations
+                .translate(&language, &key),
+        )
+    }
+
+    fn tracks(self: Pin<&mut Self>, language: QString, count: i32) -> QString {
+        QString::from(crate::i18n::Translations::track_count(
+            &language.to_string(),
+            count as i64,
+        ))
+    }
+
+    fn favorites(self: Pin<&mut Self>, language: QString, count: i32) -> QString {
+        QString::from(crate::i18n::Translations::favorite_count(
+            &language.to_string(),
+            count as i64,
+        ))
+    }
+
+    fn set_ui_language(mut self: Pin<&mut Self>, language: QString) {
+        let language = language.to_string().trim().to_ascii_lowercase();
+        let language = if !language.is_empty()
+            && language.chars().all(|character| {
+                character.is_ascii_alphanumeric() || character == '-' || character == '_'
+            }) {
+            language
+        } else {
+            "en".to_owned()
+        };
+        self.as_mut().set_language(QString::from(language.as_str()));
+        if let Err(error) = integrations::save_language(&language) {
+            self.as_mut().rust_mut().get_mut().integration_status = QString::from(error);
+        }
     }
 
     fn play_track(mut self: Pin<&mut Self>, track_id: QString) {

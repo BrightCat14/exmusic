@@ -111,7 +111,7 @@ Item {
         width: 150; height: 36; radius: 18
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 50 }
         color: waveMenuOpen ? "#9b7df5" : "#241d32"
-        Text { anchors.centerIn: parent; text: "My Wave  ▾"; color: waveMenuOpen ? "#21182d" : "#d8ccff"; font.pixelSize: 13; font.bold: true }
+        Text { anchors.centerIn: parent; text: player.tr(player.language, "player.wave") + "  ▾"; color: waveMenuOpen ? "#21182d" : "#d8ccff"; font.pixelSize: 13; font.bold: true }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: waveMenuOpen = !waveMenuOpen }
     }
 
@@ -133,13 +133,13 @@ Item {
             Column {
                 width: (parent.width - 16) / 3
                 spacing: 5
-                Text { text: "Character"; color: "#c4b0ff"; font.bold: true; font.pixelSize: 12 }
+                Text { text: player.tr(player.language, "player.character"); color: "#c4b0ff"; font.bold: true; font.pixelSize: 12 }
                 Repeater {
                     model: [
-                        { label: "Anything", seed: "", category: "diversity" },
-                        { label: "Favorites", seed: "settingDiversity:favorite", category: "diversity" },
-                        { label: "Unfamiliar", seed: "settingDiversity:discover", category: "diversity" },
-                        { label: "Popular", seed: "settingDiversity:popular", category: "diversity" }
+                        { label: "player.anything", seed: "", category: "diversity" },
+                        { label: "player.favorites", seed: "settingDiversity:favorite", category: "diversity" },
+                        { label: "player.unfamiliar", seed: "settingDiversity:discover", category: "diversity" },
+                        { label: "player.popular", seed: "settingDiversity:popular", category: "diversity" }
                     ]
                     delegate: waveOption
                 }
@@ -147,14 +147,14 @@ Item {
             Column {
                 width: (parent.width - 16) / 3
                 spacing: 5
-                Text { text: "Mood"; color: "#c4b0ff"; font.bold: true; font.pixelSize: 12 }
+                Text { text: player.tr(player.language, "player.mood"); color: "#c4b0ff"; font.bold: true; font.pixelSize: 12 }
                 Repeater {
                     model: [
-                        { label: "Any mood", seed: "", category: "mood" },
-                        { label: "Energetic", seed: "settingMoodEnergy:active", category: "mood" },
-                        { label: "Cheerful", seed: "settingMoodEnergy:fun", category: "mood" },
-                        { label: "Calm", seed: "settingMoodEnergy:calm", category: "mood" },
-                        { label: "Sad", seed: "settingMoodEnergy:sad", category: "mood" }
+                        { label: "player.anyMood", seed: "", category: "mood" },
+                        { label: "player.energetic", seed: "settingMoodEnergy:active", category: "mood" },
+                        { label: "player.cheerful", seed: "settingMoodEnergy:fun", category: "mood" },
+                        { label: "player.calm", seed: "settingMoodEnergy:calm", category: "mood" },
+                        { label: "player.sad", seed: "settingMoodEnergy:sad", category: "mood" }
                     ]
                     delegate: waveOption
                 }
@@ -162,13 +162,13 @@ Item {
             Column {
                 width: (parent.width - 16) / 3
                 spacing: 5
-                Text { text: "Language"; color: "#c4b0ff"; font.bold: true; font.pixelSize: 12 }
+                Text { text: player.tr(player.language, "player.language"); color: "#c4b0ff"; font.bold: true; font.pixelSize: 12 }
                 Repeater {
                     model: [
-                        { label: "Any language", seed: "", category: "language" },
-                        { label: "Russian", seed: "settingLanguage:russian", category: "language" },
-                        { label: "Foreign", seed: "settingLanguage:not-russian", category: "language" },
-                        { label: "Wordless", seed: "settingLanguage:without-words", category: "language" }
+                        { label: "player.anyLanguage", seed: "", category: "language" },
+                        { label: "player.russian", seed: "settingLanguage:russian", category: "language" },
+                        { label: "player.foreign", seed: "settingLanguage:not-russian", category: "language" },
+                        { label: "player.wordless", seed: "settingLanguage:without-words", category: "language" }
                     ]
                     delegate: waveOption
                 }
@@ -183,7 +183,7 @@ Item {
             width: 128; height: 31; radius: 8
             color: modelData.seed === selectedWaveSeed(modelData.category)
                    ? "#3b2e59" : (optionMouse.containsMouse ? "#302542" : "transparent")
-            Text { anchors.centerIn: parent; text: modelData.label; color: "#e8ddff"; font.pixelSize: 12 }
+            Text { anchors.centerIn: parent; text: player.tr(player.language, modelData.label); color: "#e8ddff"; font.pixelSize: 12 }
             MouseArea {
                 id: optionMouse
                 anchors.fill: parent
@@ -379,6 +379,7 @@ Item {
                      onClicked: player.toggle_like() }
         IconButton { glyph: "\uf1e6" }
         ThreeDotsMenu {
+            player: root.player
             onLyricsRequested: { root.lyricsOpen = !root.lyricsOpen; root.queueOpen = false }
             onQueueRequested: { root.queueOpen = !root.queueOpen; root.lyricsOpen = false }
         }
@@ -423,7 +424,7 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "Текст песни"; color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "lyrics.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
                 Text {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -439,7 +440,7 @@ Item {
                 Text {
                     id: lyricsText
                     width: parent.width
-                    text: player.lyric.length ? player.lyric : "Текст появится после загрузки трека"
+                    text: player.lyric.length ? player.lyric : player.tr(player.language, "lyrics.empty")
                     color: "#d7cfdf"
                     font.pixelSize: 14
                     wrapMode: Text.Wrap
@@ -467,7 +468,7 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: "Очередь"; color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "queue.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
                 Text {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter

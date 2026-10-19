@@ -32,7 +32,7 @@ Item {
         spacing: 14
 
         Text {
-            text: "Search"
+            text: player.tr(player.language, "search.title")
             color: "#f7f3fa"
             font { pixelSize: 25; weight: Font.Black }
         }
@@ -53,7 +53,7 @@ Item {
                 clip: true
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Search tracks, artists, albums..."
+                    text: player.tr(player.language, "search.placeholder")
                     color: "#8f879c"
                     visible: !parent.text.length
                 }

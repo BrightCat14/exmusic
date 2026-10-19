@@ -12,16 +12,20 @@ Rectangle {
         spacing: 18
 
         Text {
-            text: "Sign in to EXmusic"
+            text: player.tr(player.language, "login.title")
             color: "#f7f3fa"
             font { pixelSize: 32; weight: Font.Black }
         }
         Text {
             width: parent.width
             wrapMode: Text.WordWrap
-            text: "Sign in with a Yandex device code. Leave the optional credentials empty to use the public Yandex Music client."
+            text: player.tr(player.language, "login.description")
             color: "#aaa4b5"
             font.pixelSize: 14
+        }
+        LanguageSelector {
+            player: root.player
+            z: open ? 100 : 0
         }
         Rectangle {
             id: clientId
@@ -37,7 +41,7 @@ Rectangle {
                 color: "white"
                 selectByMouse: true
                 clip: true
-                Text { anchors.verticalCenter: parent.verticalCenter; text: "OAuth client ID (optional)"; color: "#8f879c"; visible: !parent.text.length }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "login.clientId"); color: "#8f879c"; visible: !parent.text.length }
             }
         }
         Rectangle {
@@ -55,7 +59,7 @@ Rectangle {
                 echoMode: TextInput.Password
                 selectByMouse: true
                 clip: true
-                Text { anchors.verticalCenter: parent.verticalCenter; text: "OAuth client secret (optional)"; color: "#8f879c"; visible: !parent.text.length }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "login.clientSecret"); color: "#8f879c"; visible: !parent.text.length }
             }
         }
         Rectangle {
@@ -63,7 +67,7 @@ Rectangle {
             height: 46
             radius: 12
             color: mouse.containsMouse ? "#c4b0ff" : "#a98cf0"
-            Text { anchors.centerIn: parent; text: player && player.login_state === "requesting" ? "Requesting code..." : "Continue with Yandex"; color: "#20192c"; font.bold: true }
+            Text { anchors.centerIn: parent; text: player && player.login_state === "requesting" ? player.tr(player.language, "login.requesting") : player.tr(player.language, "login.continue"); color: "#20192c"; font.bold: true }
             MouseArea {
                 id: mouse
                 anchors.fill: parent
@@ -77,11 +81,11 @@ Rectangle {
             width: parent.width
             spacing: 10
             visible: player && (player.login_state === "waiting" || player.login_state === "error")
-            Text { text: "Open the verification page and enter this code:"; color: "#d7cfdf"; font.pixelSize: 14 }
+            Text { text: player.tr(player.language, "login.instruction"); color: "#d7cfdf"; font.pixelSize: 14 }
             Text { text: player ? player.user_code : ""; color: "#c4b0ff"; font { pixelSize: 34; bold: true; letterSpacing: 4 } }
             Rectangle {
                 width: 220; height: 40; radius: 10; color: "#2b233c"
-                Text { anchors.centerIn: parent; text: "Open verification page"; color: "#eee8ff" }
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "login.openPage"); color: "#eee8ff" }
                 MouseArea {
                     anchors.fill: parent
                     enabled: player && player.verification_url.length > 0

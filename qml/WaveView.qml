@@ -36,13 +36,13 @@ Item {
             width: parent.width
             spacing: 18
             Text {
-                text: "My Wave"
+                text: player.tr(player.language, "wavePage.title")
                 color: "#f7f3fa"
                 font { pixelSize: 32; weight: Font.Black }
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Personal recommendations"
+                text: player.tr(player.language, "wavePage.subtitle")
                 color: "#aaa4b5"
                 font.pixelSize: 14
             }
@@ -50,7 +50,7 @@ Item {
             Rectangle {
                 width: 120; height: 38; radius: 19
                 color: reload.containsMouse ? "#3b2e59" : "#2b233c"
-                Text { anchors.centerIn: parent; text: "Refresh"; color: "#e8ddff"; font.bold: true }
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.refresh"); color: "#e8ddff"; font.bold: true }
                 MouseArea {
                     id: reload; anchors.fill: parent; hoverEnabled: true
                     onClicked: root.player.load_wave()
@@ -59,7 +59,7 @@ Item {
         }
 
         Text {
-            text: "A stream built from your listening history"
+            text: player.tr(player.language, "wavePage.description")
             color: "#aaa4b5"
             font.pixelSize: 14
         }
