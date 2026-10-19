@@ -19,6 +19,7 @@ rustfft = "6.2"
 md-5 = "0.10"
 discord-rich-presence = "1.1"
 rustfm-scrobble = "1.1"
+souvlaki = "0.8"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7", features = ["link_qt_object_files"] }

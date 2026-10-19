@@ -2,12 +2,14 @@ use cxx_qt_build::{CxxQtBuilder, QmlModule};
 
 fn main() {
     println!("cargo::rerun-if-changed=src/app_icon.cpp");
+    println!("cargo::rerun-if-changed=src/tray.cpp");
     println!("cargo::rerun-if-changed=assets/exmusic.svg");
     println!("cargo::rerun-if-changed=assets/exmusic.png");
 
     CxxQtBuilder::new()
         .qt_module("Quick")
         .qt_module("Svg")
+        .qt_module("Widgets")
         .qml_module(QmlModule {
             uri: "app.backend",
             rust_files: &["src/player.rs"],
@@ -44,6 +46,7 @@ fn main() {
         })
         .cc_builder(|cc| {
             cc.file("src/app_icon.cpp");
+            cc.file("src/tray.cpp");
         })
         .build();
 }

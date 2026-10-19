@@ -73,5 +73,17 @@
   "settings.lastfmSession": "Last.fm session key (optionl)",
   "wavePage.title": "Mah Wav",
   "wavePage.subtitle": "Personl recommendayshunz",
-  "wavePage.description": "A stream built from ur listenin historee"
+  "wavePage.description": "A stream built from ur listenin historee",
+  "settings.tray": "System trai",
+  "settings.trayHint": "Keep EXmusic runnin in teh trai when teh windo iz clozed",
+  "settings.mediaControls": "System media controlz",
+  "settings.mediaControlsHint": "Show playbak in MPRIS an Windows media controlz",
+  "tray.play": "Play",
+  "tray.pause": "Paws",
+  "tray.next": "Nekst",
+  "tray.previous": "Preveeus",
+  "tray.show": "Show EXmusic",
+  "tray.hide": "Hide EXmusic",
+  "tray.quit": "Quit",
+  "tray.nothing": "Nothin playin"
 }

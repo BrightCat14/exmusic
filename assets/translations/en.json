@@ -73,5 +73,17 @@
   "settings.lastfmSession": "Last.fm session key (optional)",
   "wavePage.title": "My Wave",
   "wavePage.subtitle": "Personal recommendations",
-  "wavePage.description": "A stream built from your listening history"
+  "wavePage.description": "A stream built from your listening history",
+  "settings.tray": "System tray",
+  "settings.trayHint": "Keep EXmusic running in the tray when the window is closed",
+  "settings.mediaControls": "System media controls",
+  "settings.mediaControlsHint": "Show playback in MPRIS and Windows media controls",
+  "tray.play": "Play",
+  "tray.pause": "Pause",
+  "tray.next": "Next",
+  "tray.previous": "Previous",
+  "tray.show": "Show EXmusic",
+  "tray.hide": "Hide EXmusic",
+  "tray.quit": "Quit",
+  "tray.nothing": "Nothing playing"
 }

@@ -73,5 +73,17 @@
   "settings.lastfmSession": "Ключ сессии Last.fm (необязательно)",
   "wavePage.title": "Моя волна",
   "wavePage.subtitle": "Персональные рекомендации",
-  "wavePage.description": "Поток, построенный на вашей истории прослушивания"
+  "wavePage.description": "Поток, построенный на вашей истории прослушивания",
+  "settings.tray": "Системный трей",
+  "settings.trayHint": "Оставлять EXmusic в трее при закрытии окна",
+  "settings.mediaControls": "Системные элементы управления",
+  "settings.mediaControlsHint": "Показывать воспроизведение в MPRIS и системных медиаэлементах Windows",
+  "tray.play": "Воспроизвести",
+  "tray.pause": "Пауза",
+  "tray.next": "Следующий",
+  "tray.previous": "Предыдущий",
+  "tray.show": "Показать EXmusic",
+  "tray.hide": "Скрыть EXmusic",
+  "tray.quit": "Выход",
+  "tray.nothing": "Ничего не играет"
 }

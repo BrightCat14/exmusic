@@ -480,6 +480,8 @@ pub mod qobject {
         #[qproperty(QString, login_error)]
         #[qproperty(bool, discord_enabled)]
         #[qproperty(bool, lastfm_enabled)]
+        #[qproperty(bool, tray_enabled)]
+        #[qproperty(bool, media_controls_enabled)]
         #[qproperty(QString, integration_status)]
         #[qproperty(QString, integration_config_json)]
         #[qproperty(QString, languages_json)]
@@ -519,6 +521,10 @@ pub mod qobject {
         fn set_visualizer(self: Pin<&mut PlayerBackend>, enabled: bool);
         #[qinvokable]
         fn set_ui_language(self: Pin<&mut PlayerBackend>, language: QString);
+        #[qinvokable]
+        fn set_tray(self: Pin<&mut PlayerBackend>, enabled: bool);
+        #[qinvokable]
+        fn set_media_controls(self: Pin<&mut PlayerBackend>, enabled: bool);
         #[qinvokable]
         fn toggle_play(self: Pin<&mut PlayerBackend>);
         #[qinvokable]
@@ -598,12 +604,16 @@ pub struct PlayerBackendRust {
     login_error: QString,
     discord_enabled: bool,
     lastfm_enabled: bool,
+    tray_enabled: bool,
+    media_controls_enabled: bool,
     integration_status: QString,
     integration_config_json: QString,
     languages_json: QString,
     translations: crate::i18n::Translations,
     integration_config: integrations::IntegrationConfig,
     integrations: Option<integrations::Integrations>,
+    settings: integrations::AppSettings,
+    settings_dirty: bool,
     current_album: String,
     current_cover_source_url: String,
     current_duration_ms: i64,
@@ -637,9 +647,14 @@ impl Default for PlayerBackendRust {
         let integration_config = integrations::load_config();
         let integration_config_json =
             serde_json::to_string(&integration_config).unwrap_or_else(|_| "{}".to_owned());
-        let integrations_handle = integrations::spawn(integration_config.clone());
+        let settings = integrations::load_settings();
+        let integrations_handle =
+            integrations::spawn(integration_config.clone(), settings.media_controls_enabled);
         let translations = crate::i18n::Translations::load();
         let languages_json = translations.languages_json();
+        let language = integrations::load_language();
+        let labels = crate::tray::Labels::new(&translations, &language);
+        let tray_enabled = crate::tray::configure(settings.tray_enabled, &labels);
         Self {
             playing: false,
             liked: false,
@@ -671,25 +686,29 @@ impl Default for PlayerBackendRust {
             loading: false,
             duration_ms: 0,
             position_ms: 0,
-            volume_percent: 100,
-            language: QString::from(integrations::load_language()),
+            volume_percent: settings.volume_percent.clamp(0, 100),
+            language: QString::from(language.as_str()),
             visual_bass: 0.0,
             visual_mid: 0.0,
             visual_high: 0.0,
             visual_beat: 0.0,
-            visualizer_enabled: true,
+            visualizer_enabled: settings.visualizer_enabled,
             login_state: QString::from("idle"),
             user_code: QString::from(""),
             verification_url: QString::from(""),
             login_error: QString::from(""),
             discord_enabled: integration_config.discord_enabled,
             lastfm_enabled: integration_config.lastfm_enabled,
+            tray_enabled,
+            media_controls_enabled: settings.media_controls_enabled,
             integration_status: QString::from(""),
             integration_config_json: QString::from(integration_config_json),
             languages_json: QString::from(languages_json),
             translations,
             integration_config,
             integrations: Some(integrations_handle),
+            settings,
+            settings_dirty: false,
             current_album: String::new(),
             current_cover_source_url: String::new(),
             current_duration_ms: 0,
@@ -730,6 +749,91 @@ impl qobject::PlayerBackend {
         rust.backend_events = Some(receiver);
         rust.backend_sender = Some(sender.clone());
         sender
+    }
+
+    fn persist_settings(mut self: Pin<&mut Self>) {
+        let (dirty, settings) = {
+            let backend = self.as_ref().get_ref().rust();
+            (backend.settings_dirty, backend.settings.clone())
+        };
+        if !dirty {
+            return;
+        }
+        if let Err(error) = integrations::save_settings(&settings) {
+            self.as_mut().set_integration_status(QString::from(error));
+            return;
+        }
+        self.as_mut().rust_mut().get_mut().settings_dirty = false;
+    }
+
+    fn tray_labels(self: Pin<&Self>) -> crate::tray::Labels {
+        let backend = self.as_ref().get_ref().rust();
+        let language = backend.language.to_string();
+        crate::tray::Labels::new(&backend.translations, &language)
+    }
+
+    fn handle_media_event(mut self: Pin<&mut Self>, action: &str) {
+        match action {
+            "play" => {
+                if !*self.as_ref().playing() {
+                    self.as_mut().toggle_play();
+                }
+            }
+            "pause" => {
+                if *self.as_ref().playing() {
+                    self.as_mut().toggle_play();
+                }
+            }
+            "toggle" => self.as_mut().toggle_play(),
+            "next" => self.as_mut().next(),
+            "previous" => self.as_mut().previous(),
+            "stop" => {
+                if *self.as_ref().playing() {
+                    self.as_mut().toggle_play();
+                }
+                self.as_mut().seek(0);
+            }
+            "raise" => crate::tray::raise_window(),
+            "quit" => crate::tray::quit(),
+            _ => {
+                if let Some(position) = action.strip_prefix("position:") {
+                    if let Ok(position) = position.parse::<i64>() {
+                        let duration = *self.as_ref().duration_ms() as i64;
+                        let position = if duration > 0 {
+                            position.clamp(0, duration)
+                        } else {
+                            position.max(0)
+                        };
+                        self.as_mut().seek(position.min(i32::MAX as i64) as i32);
+                    }
+                } else if let Some(seek) = action.strip_prefix("seek:") {
+                    let Some((direction, amount)) = seek.split_once(':') else {
+                        return;
+                    };
+                    let Ok(amount) = amount.parse::<i64>() else {
+                        return;
+                    };
+                    let current = *self.as_ref().position_ms() as i64;
+                    let target = if direction == "forward" {
+                        current.saturating_add(amount)
+                    } else {
+                        current.saturating_sub(amount)
+                    };
+                    let duration = *self.as_ref().duration_ms() as i64;
+                    let target = if duration > 0 {
+                        target.clamp(0, duration)
+                    } else {
+                        target.max(0)
+                    };
+                    self.as_mut().seek(target.min(i32::MAX as i64) as i32);
+                } else if let Some(volume) = action.strip_prefix("volume:") {
+                    if let Ok(volume) = volume.parse::<f64>() {
+                        self.as_mut()
+                            .set_volume((volume * 100.0).round().clamp(0.0, 100.0) as i32);
+                    }
+                }
+            }
+        }
     }
 
     fn save_integration_config(mut self: Pin<&mut Self>, config_json: QString) {
@@ -864,6 +968,11 @@ impl qobject::PlayerBackend {
     }
 
     fn initialize(mut self: Pin<&mut Self>) {
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            handle.send(IntegrationCommand::WindowHandle(
+                crate::tray::window_handle(),
+            ));
+        }
         let Some(token) = load_token() else {
             return;
         };
@@ -1083,6 +1192,41 @@ impl qobject::PlayerBackend {
 
     fn set_visualizer(mut self: Pin<&mut Self>, enabled: bool) {
         self.as_mut().set_visualizer_enabled(enabled);
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.settings.visualizer_enabled = enabled;
+            backend.settings_dirty = true;
+        }
+        self.as_mut().persist_settings();
+    }
+
+    fn set_tray(mut self: Pin<&mut Self>, enabled: bool) {
+        let labels = self.as_ref().tray_labels();
+        let active = crate::tray::configure(enabled, &labels);
+        if enabled && !active {
+            self.as_mut()
+                .set_integration_status(QString::from("System tray is not available"));
+        }
+        self.as_mut().set_tray_enabled(active);
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.settings.tray_enabled = active;
+            backend.settings_dirty = true;
+        }
+        self.as_mut().persist_settings();
+    }
+
+    fn set_media_controls(mut self: Pin<&mut Self>, enabled: bool) {
+        self.as_mut().set_media_controls_enabled(enabled);
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.settings.media_controls_enabled = enabled;
+            backend.settings_dirty = true;
+        }
+        self.as_mut().persist_settings();
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            handle.send(IntegrationCommand::MediaControlsEnabled(enabled));
+        }
     }
 
     fn tr(self: Pin<&mut Self>, language: QString, key: QString) -> QString {
@@ -1124,6 +1268,19 @@ impl qobject::PlayerBackend {
         self.as_mut().set_language(QString::from(language.as_str()));
         if let Err(error) = integrations::save_language(&language) {
             self.as_mut().rust_mut().get_mut().integration_status = QString::from(error);
+        }
+        let enabled = *self.as_ref().tray_enabled();
+        let labels = {
+            let backend = self.as_ref().get_ref().rust();
+            crate::tray::Labels::new(&backend.translations, &language)
+        };
+        let active = crate::tray::configure(enabled, &labels);
+        if enabled != active {
+            self.as_mut().set_tray_enabled(active);
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.settings.tray_enabled = active;
+            backend.settings_dirty = true;
+            self.as_mut().persist_settings();
         }
     }
 
@@ -1192,6 +1349,14 @@ impl qobject::PlayerBackend {
     }
 
     fn poll_backend(mut self: Pin<&mut Self>) {
+        self.as_mut().persist_settings();
+        for action in crate::tray::drain_actions() {
+            match action {
+                crate::tray::TrayAction::TogglePlayback => self.as_mut().toggle_play(),
+                crate::tray::TrayAction::Next => self.as_mut().next(),
+                crate::tray::TrayAction::Previous => self.as_mut().previous(),
+            }
+        }
         let mut integration_events = Vec::new();
         if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
             while let Some(event) = handle.try_event() {
@@ -1208,7 +1373,11 @@ impl qobject::PlayerBackend {
                     serde_json::to_string(&backend.integration_config)
                         .unwrap_or_else(|_| "{}".to_owned())
                 };
-                self.as_mut().set_integration_config_json(QString::from(json));
+                self.as_mut()
+                    .set_integration_config_json(QString::from(json));
+            } else if let Some(action) = event.strip_prefix("media:") {
+                let action = action.to_owned();
+                self.as_mut().handle_media_event(&action);
             } else {
                 self.as_mut().set_integration_status(QString::from(event));
             }
@@ -1225,6 +1394,9 @@ impl qobject::PlayerBackend {
         self.as_mut().set_visual_mid(bands.mid as f64);
         self.as_mut().set_visual_high(bands.high as f64);
         self.as_mut().set_visual_beat(bands.beat as f64);
+        let tray_title = self.as_ref().title().to_string();
+        let tray_artist = self.as_ref().artist().to_string();
+        crate::tray::set_metadata(&tray_title, &tray_artist, *self.as_ref().playing());
         let position_ms = self
             .as_ref()
             .get_ref()
@@ -1593,7 +1765,7 @@ impl qobject::PlayerBackend {
         }
     }
 
-    fn seek(self: Pin<&mut Self>, position_ms: i32) {
+    fn seek(mut self: Pin<&mut Self>, position_ms: i32) {
         if position_ms < 0 {
             return;
         }
@@ -1602,6 +1774,13 @@ impl qobject::PlayerBackend {
                 eprintln!("[audio] seek failed: {error}");
             }
         }
+        self.as_mut().set_position_ms(position_ms);
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            handle.send(IntegrationCommand::PlayingChanged {
+                playing: *self.as_ref().playing(),
+                position_ms: position_ms as i64,
+            });
+        }
     }
 
     fn set_volume(mut self: Pin<&mut Self>, volume_percent: i32) {
@@ -1609,6 +1788,16 @@ impl qobject::PlayerBackend {
         self.as_mut().set_volume_percent(volume_percent);
         if let Some(sink) = self.as_ref().get_ref().rust().audio_sink.as_ref() {
             sink.set_volume(volume_percent as f32 / 100.0);
+        }
+        {
+            let backend = self.as_mut().rust_mut().get_mut();
+            backend.settings.volume_percent = volume_percent;
+            backend.settings_dirty = true;
+        }
+        if let Some(handle) = self.as_ref().get_ref().rust().integrations.as_ref() {
+            handle.send(IntegrationCommand::VolumeChanged(
+                volume_percent as f64 / 100.0,
+            ));
         }
     }
 

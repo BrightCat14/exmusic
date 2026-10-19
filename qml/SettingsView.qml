@@ -65,9 +65,10 @@ Item {
                 z: languageSelector.open ? 50 : 0
                 Column {
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
+                    width: parent.width - 92
                     spacing: 5
-                    Text { text: player.tr(player.language, "settings.language"); color: "#f4f0f7"; font.bold: true }
-                    Text { text: player.tr(player.language, "settings.languageHint"); color: "#aaa4b5"; font.pixelSize: 12 }
+                    Text { text: player.tr(player.language, "settings.language"); color: "#f4f0f7"; font.bold: true; width: parent.width; elide: Text.ElideRight }
+                    Text { text: player.tr(player.language, "settings.languageHint"); color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight }
                 }
                 LanguageSelector {
                     id: languageSelector
@@ -80,9 +81,10 @@ Item {
                 width: parent.width; height: 82; radius: 16; color: "#1d1728"
                 Column {
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
+                    width: parent.width - 92
                     spacing: 5
-                    Text { text: player.tr(player.language, "settings.visualizer"); color: "#f4f0f7"; font.bold: true }
-                    Text { text: player.tr(player.language, "settings.visualizerHint"); color: "#aaa4b5"; font.pixelSize: 12 }
+                    Text { text: player.tr(player.language, "settings.visualizer"); color: "#f4f0f7"; font.bold: true; width: parent.width; elide: Text.ElideRight }
+                    Text { text: player.tr(player.language, "settings.visualizerHint"); color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight }
                 }
                 Rectangle {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 20 }
@@ -94,12 +96,48 @@ Item {
             }
 
             Rectangle {
+                width: parent.width; height: 82; radius: 16; color: "#1d1728"
+                Column {
+                    anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
+                    width: parent.width - 92
+                    spacing: 5
+                    Text { text: player.tr(player.language, "settings.tray"); color: "#f4f0f7"; font.bold: true; width: parent.width; elide: Text.ElideRight }
+                    Text { text: player.tr(player.language, "settings.trayHint"); color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight }
+                }
+                Rectangle {
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 20 }
+                    width: 52; height: 30; radius: 15
+                    color: player.tray_enabled ? "#9b7df5" : "#493b68"
+                    Rectangle { width: 24; height: 24; radius: 12; anchors.verticalCenter: parent.verticalCenter; x: player.tray_enabled ? 25 : 3; color: "white"; Behavior on x { NumberAnimation { duration: 120 } } }
+                    MouseArea { anchors.fill: parent; onClicked: player.set_tray(!player.tray_enabled) }
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: 82; radius: 16; color: "#1d1728"
+                Column {
+                    anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
+                    width: parent.width - 92
+                    spacing: 5
+                    Text { text: player.tr(player.language, "settings.mediaControls"); color: "#f4f0f7"; font.bold: true; width: parent.width; elide: Text.ElideRight }
+                    Text { text: player.tr(player.language, "settings.mediaControlsHint"); color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight }
+                }
+                Rectangle {
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 20 }
+                    width: 52; height: 30; radius: 15
+                    color: player.media_controls_enabled ? "#9b7df5" : "#493b68"
+                    Rectangle { width: 24; height: 24; radius: 12; anchors.verticalCenter: parent.verticalCenter; x: player.media_controls_enabled ? 25 : 3; color: "white"; Behavior on x { NumberAnimation { duration: 120 } } }
+                    MouseArea { anchors.fill: parent; onClicked: player.set_media_controls(!player.media_controls_enabled) }
+                }
+            }
+
+            Rectangle {
                 width: parent.width; height: 112; radius: 16; color: "#1d1728"
                 Column { anchors.fill: parent; anchors.margins: 20; spacing: 12
-                    Row { width: parent.width
-                        Text { text: player.tr(player.language, "settings.volume"); color: "#f4f0f7"; font.bold: true }
-                        Item { width: parent.width - 100; height: 1 }
-                        Text { text: player.volume_percent + "%"; color: "#c4b0ff"; font.bold: true }
+                    Item {
+                        width: parent.width; height: 20
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.volume"); color: "#f4f0f7"; font.bold: true }
+                        Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: player.volume_percent + "%"; color: "#c4b0ff"; font.bold: true }
                     }
                     Rectangle {
                         id: volumeTrack
@@ -126,11 +164,11 @@ Item {
                     Text { text: player.tr(player.language, "settings.integrations"); color: "#f4f0f7"; font.bold: true }
                     Text { text: player.tr(player.language, "settings.integrationsHint"); color: "#aaa4b5"; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap }
 
-                    Row {
-                        width: parent.width
-                        Text { text: player.tr(player.language, "settings.discord"); color: "#ddd6e6"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
-                        Item { width: parent.width - 160; height: 1 }
+                    Item {
+                        width: parent.width; height: 30
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 64; elide: Text.ElideRight; text: player.tr(player.language, "settings.discord"); color: "#ddd6e6"; font.pixelSize: 14 }
                         Rectangle {
+                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                             width: 52; height: 30; radius: 15
                             color: player.discord_enabled ? "#9b7df5" : "#493b68"
                             Rectangle { width: 24; height: 24; radius: 12; anchors.verticalCenter: parent.verticalCenter; x: player.discord_enabled ? 25 : 3; color: "white"; Behavior on x { NumberAnimation { duration: 120 } } }
@@ -142,16 +180,16 @@ Item {
                         TextInput {
                             id: discordClientId
                             anchors.fill: parent; anchors.margins: 10
-                            color: "white"; selectByMouse: true; clip: true
+                            color: "white"; selectByMouse: true; clip: true; onEditingFinished: root.saveConfig(null)
                             Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.discordClientId"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
 
-                    Row {
-                        width: parent.width
-                        Text { text: player.tr(player.language, "settings.lastfm"); color: "#ddd6e6"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
-                        Item { width: parent.width - 160; height: 1 }
+                    Item {
+                        width: parent.width; height: 30
+                        Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 64; elide: Text.ElideRight; text: player.tr(player.language, "settings.lastfm"); color: "#ddd6e6"; font.pixelSize: 14 }
                         Rectangle {
+                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                             width: 52; height: 30; radius: 15
                             color: player.lastfm_enabled ? "#9b7df5" : "#493b68"
                             Rectangle { width: 24; height: 24; radius: 12; anchors.verticalCenter: parent.verticalCenter; x: player.lastfm_enabled ? 25 : 3; color: "white"; Behavior on x { NumberAnimation { duration: 120 } } }
@@ -163,7 +201,7 @@ Item {
                         TextInput {
                             id: lastfmApiKey
                             anchors.fill: parent; anchors.margins: 10
-                            color: "white"; selectByMouse: true; clip: true
+                            color: "white"; selectByMouse: true; clip: true; onEditingFinished: root.saveConfig(null)
                             Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmKey"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
@@ -172,7 +210,7 @@ Item {
                         TextInput {
                             id: lastfmApiSecret
                             anchors.fill: parent; anchors.margins: 10
-                            color: "white"; echoMode: TextInput.Password; selectByMouse: true; clip: true
+                            color: "white"; echoMode: TextInput.Password; selectByMouse: true; clip: true; onEditingFinished: root.saveConfig(null)
                             Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmSecret"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
@@ -181,7 +219,7 @@ Item {
                         TextInput {
                             id: lastfmUsername
                             anchors.fill: parent; anchors.margins: 10
-                            color: "white"; selectByMouse: true; clip: true
+                            color: "white"; selectByMouse: true; clip: true; onEditingFinished: root.saveConfig(null)
                             Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmUsername"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
@@ -190,7 +228,7 @@ Item {
                         TextInput {
                             id: lastfmPassword
                             anchors.fill: parent; anchors.margins: 10
-                            color: "white"; echoMode: TextInput.Password; selectByMouse: true; clip: true
+                            color: "white"; echoMode: TextInput.Password; selectByMouse: true; clip: true; onEditingFinished: root.saveConfig(null)
                             Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmPassword"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
@@ -199,7 +237,7 @@ Item {
                         TextInput {
                             id: lastfmSessionKey
                             anchors.fill: parent; anchors.margins: 10
-                            color: "white"; selectByMouse: true; clip: true
+                            color: "white"; selectByMouse: true; clip: true; onEditingFinished: root.saveConfig(null)
                             Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "settings.lastfmSession"); color: "#8f879c"; visible: !parent.text.length }
                         }
                     }
