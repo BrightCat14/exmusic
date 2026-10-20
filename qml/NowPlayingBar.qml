@@ -8,11 +8,11 @@ Item {
 
     height: 74
 
-    Rectangle { anchors.fill: parent; color: "#15111e" }
+    Rectangle { anchors.fill: parent; color: "#0e0e13" }
     Rectangle {
         anchors { top: parent.top; left: parent.left; right: parent.right }
         height: 1
-        color: "#2a2338"
+        color: "#2e2a3a"
     }
 
     Rectangle {
@@ -20,7 +20,7 @@ Item {
         height: 2
         width: parent.width * (player && player.duration_ms > 0
                                ? Math.min(1, player.position_ms / player.duration_ms) : 0)
-        color: "#9b7df5"
+        color: "#c4b0ff"
         visible: player && player.title.length > 0
     }
 
@@ -30,17 +30,17 @@ Item {
         spacing: 6
 
         IconButton { size: 36; y: 5; glyph: "\uf065"; onClicked: root.expand() }
-        IconButton { size: 36; y: 5; glyph: "\uf074"; tint: player && player.shuffle ? "#c4b0ff" : "white"
+        IconButton { size: 36; y: 5; glyph: "\uf074"; tint: player && player.shuffle ? "#c4b0ff" : "#f5f2fb"
                      onClicked: player.toggle_shuffle() }
         IconButton { size: 36; y: 5; glyph: "\uf048"; onClicked: player.previous() }
         IconButton { size: 46; glyph: player && player.playing ? "\uf04c" : "\uf04b"
-                     tint: "#c4b0ff"; color: "#20192c"; border.width: 0
+                     tint: "#16101f"; color: "#c4b0ff"; border.width: 0
                      onClicked: player.toggle_play() }
         IconButton { size: 36; y: 5; glyph: "\uf051"; onClicked: player.next() }
-        IconButton { size: 36; y: 5; glyph: "\uf01e"; tint: player && player.repeat ? "#c4b0ff" : "white"
+        IconButton { size: 36; y: 5; glyph: "\uf01e"; tint: player && player.repeat ? "#c4b0ff" : "#f5f2fb"
                      onClicked: player.toggle_repeat() }
         IconButton { size: 36; y: 5; glyph: player && player.liked ? "\uf004" : "\uf08a"
-                     tint: player && player.liked ? "#ff7da8" : "white"
+                     tint: player && player.liked ? "#dbb5ff" : "#f5f2fb"
                      onClicked: player.toggle_like() }
     }
 
@@ -57,7 +57,7 @@ Item {
             Rectangle {
                 width: 46; height: 46; radius: 8
                 anchors.verticalCenter: parent.verticalCenter
-                color: "#2a2338"
+                color: "#18161f"
                 CoverArt {
                     id: barCoverArt
                     anchors.fill: parent
@@ -76,14 +76,14 @@ Item {
                     width: parent.width
                     elide: Text.ElideRight
                     text: player && player.title.length ? player.title : player.tr(player.language, "nowPlaying.nothing")
-                    color: "#f4f0f7"
+                    color: "#f5f2fb"
                     font { pixelSize: 14; bold: true }
                 }
                 Text {
                     width: parent.width
                     elide: Text.ElideRight
                     text: player ? player.artist : ""
-                    color: "#a49bb5"
+                    color: "#b3adc0"
                     font.pixelSize: 12
                 }
             }

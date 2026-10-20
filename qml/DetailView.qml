@@ -47,7 +47,7 @@ Item {
         function onPlaylist_jsonChanged() { if (root.kind === "playlist") root.refresh() }
     }
 
-    Rectangle { anchors.fill: parent; color: "#131019" }
+    Rectangle { anchors.fill: parent; color: "#0d0c10" }
 
     Column {
         anchors.fill: parent
@@ -60,8 +60,8 @@ Item {
             Rectangle {
                 width: 90; height: 32; radius: 16
                 anchors.verticalCenter: parent.verticalCenter
-                color: backBtn.containsMouse ? "#3b2e59" : "#2b233c"
-                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.back"); color: "#e8ddff"; font.pixelSize: 13 }
+                color: backBtn.containsMouse ? "#302942" : "#241f30"
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.back"); color: "#e7ddff"; font.pixelSize: 13 }
                 MouseArea {
                     id: backBtn
                     anchors.fill: parent
@@ -78,7 +78,7 @@ Item {
 
             Rectangle {
                 width: 150; height: 150; radius: 16; clip: true
-                color: "#302842"
+                color: "#1b1923"
                 CoverArt {
                     id: coverArt
                     anchors.fill: parent
@@ -103,19 +103,19 @@ Item {
                         if (kind === "artist") return player.tr(player.language, "detail.artist")
                         return player.tr(player.language, "detail.playlist")
                     }
-                    color: "#9b7df5"
+                    color: "#c4b0ff"
                     font { pixelSize: 13; bold: true; letterSpacing: 1 }
                 }
                 Text {
                     text: root.title()
-                    color: "#f7f3fa"
+                    color: "#f5f2fb"
                     font { pixelSize: 26; weight: Font.Black }
                     elide: Text.ElideRight
                     width: parent.width
                 }
                 Text {
                     text: root.subtitle()
-                    color: "#aaa4b5"
+                    color: "#b3adc0"
                     font.pixelSize: 13
                     elide: Text.ElideRight
                     width: parent.width
@@ -123,8 +123,8 @@ Item {
                 Item { width: 1; height: 6 }
                 Rectangle {
                     width: 150; height: 40; radius: 20
-                    color: playAll.containsMouse ? "#a98cf7" : "#9b7df5"
-                    Text { anchors.centerIn: parent; text: player.tr(player.language, "detail.playAll"); color: "#1a1326"; font.bold: true; font.pixelSize: 13 }
+                    color: playAll.containsMouse ? "#d6c8ff" : "#c4b0ff"
+                    Text { anchors.centerIn: parent; text: player.tr(player.language, "detail.playAll"); color: "#16101f"; font.bold: true; font.pixelSize: 13 }
                     MouseArea {
                         id: playAll
                         anchors.fill: parent
@@ -140,7 +140,7 @@ Item {
         Text {
             visible: !root.info.tracks || root.info.tracks.length === 0
             text: root.player.loading ? player.tr(player.language, "common.loading") : player.tr(player.language, "detail.noTracks")
-            color: "#aaa4b5"
+            color: "#b3adc0"
             font.pixelSize: 13
         }
 

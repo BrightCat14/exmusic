@@ -3,7 +3,7 @@ import QtQuick
 Text {
     id: root
     property string glyph: ""
-    property color tint: "#ffffff"
+    property color tint: "#f5f2fb"
 
     color: root.tint
     text: root.glyph

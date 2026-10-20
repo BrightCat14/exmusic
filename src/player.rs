@@ -163,6 +163,8 @@ fn tracks_from_json(json_text: &str) -> Vec<crate::yandex::TrackItem> {
                             .unwrap_or("")
                             .to_owned(),
                         duration_ms: item.get("durationMs").and_then(Value::as_i64).unwrap_or(0),
+                        features: crate::mood::AudioFeatures::default(),
+                        cover_palette: None,
                     })
                 })
                 .collect()
@@ -475,6 +477,11 @@ pub mod qobject {
         #[qproperty(f64, visual_high)]
         #[qproperty(f64, visual_beat)]
         #[qproperty(bool, visualizer_enabled)]
+        #[qproperty(QString, mood_name)]
+        #[qproperty(QString, mood_top_color)]
+        #[qproperty(QString, mood_mid_color)]
+        #[qproperty(QString, mood_bottom_color)]
+        #[qproperty(QString, mood_glow_color)]
         #[qproperty(QString, user_code)]
         #[qproperty(QString, verification_url)]
         #[qproperty(QString, login_error)]
@@ -598,6 +605,11 @@ pub struct PlayerBackendRust {
     visual_high: f64,
     visual_beat: f64,
     visualizer_enabled: bool,
+    mood_name: QString,
+    mood_top_color: QString,
+    mood_mid_color: QString,
+    mood_bottom_color: QString,
+    mood_glow_color: QString,
     login_state: QString,
     user_code: QString,
     verification_url: QString,
@@ -655,6 +667,7 @@ impl Default for PlayerBackendRust {
         let language = integrations::load_language();
         let labels = crate::tray::Labels::new(&translations, &language);
         let tray_enabled = crate::tray::configure(settings.tray_enabled, &labels);
+        let mood_palette = crate::mood::palette(crate::mood::Mood::Neutral);
         Self {
             playing: false,
             liked: false,
@@ -693,6 +706,11 @@ impl Default for PlayerBackendRust {
             visual_high: 0.0,
             visual_beat: 0.0,
             visualizer_enabled: settings.visualizer_enabled,
+            mood_name: QString::from(mood_palette.name),
+            mood_top_color: QString::from(mood_palette.top.as_ref()),
+            mood_mid_color: QString::from(mood_palette.mid.as_ref()),
+            mood_bottom_color: QString::from(mood_palette.bottom.as_ref()),
+            mood_glow_color: QString::from(mood_palette.glow.as_ref()),
             login_state: QString::from("idle"),
             user_code: QString::from(""),
             verification_url: QString::from(""),
@@ -1675,6 +1693,23 @@ impl qobject::PlayerBackend {
                     self.as_mut().set_title(QString::from(track.title.clone()));
                     self.as_mut()
                         .set_artist(QString::from(track.artist.clone()));
+                    let mood = if !track.features.explicit {
+                        track
+                            .cover_palette
+                            .clone()
+                            .unwrap_or_else(|| crate::mood::palette_for(track.features))
+                    } else {
+                        crate::mood::palette_for(track.features)
+                    };
+                    self.as_mut().set_mood_name(QString::from(mood.name));
+                    self.as_mut()
+                        .set_mood_top_color(QString::from(mood.top.as_ref()));
+                    self.as_mut()
+                        .set_mood_mid_color(QString::from(mood.mid.as_ref()));
+                    self.as_mut()
+                        .set_mood_bottom_color(QString::from(mood.bottom.as_ref()));
+                    self.as_mut()
+                        .set_mood_glow_color(QString::from(mood.glow.as_ref()));
                     let cover_url = if track.cover_source_url.is_empty() {
                         track.cover_url.clone()
                     } else {

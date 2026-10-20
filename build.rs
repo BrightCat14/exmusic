@@ -42,6 +42,7 @@ fn main() {
                 "assets/exmusic-with-no-bg.svg",
                 "qml/VisualizerShader.frag.qsb",
                 "qml/RoundedMask.frag.qsb",
+                "qml/GaussianBlur.frag.qsb",
             ],
             ..Default::default()
         })

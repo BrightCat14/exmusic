@@ -40,20 +40,20 @@ Item {
         id: button
         anchors.fill: parent
         radius: root.controlHeight / 2
-        color: root.open || buttonMouse.containsMouse ? "#3b2e59" : "#2b233c"
+        color: root.open || buttonMouse.containsMouse ? "#302942" : "#241f30"
         border.width: 1
-        border.color: "#493b68"
+        border.color: "#3b3549"
 
         Text {
             anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
             text: root.labelFor(root.lang)
-            color: "#e8ddff"
+            color: "#e7ddff"
             font { pixelSize: 13; bold: true }
         }
         Text {
             anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
             text: "▾"
-            color: "#aaa4b5"
+            color: "#b3adc0"
             font.pixelSize: 12
         }
         MouseArea {
@@ -72,9 +72,9 @@ Item {
         width: root.width
         height: root.languages.length * 36 + 8
         radius: 12
-        color: "#171320"
+        color: "#111016"
         border.width: 1
-        border.color: "#332b45"
+        border.color: "#2e2a3a"
         anchors { top: button.bottom; topMargin: 8; left: button.left }
 
         Column {
@@ -87,11 +87,11 @@ Item {
                     width: parent.width
                     height: 36
                     radius: 8
-                    color: modelData.code === root.lang ? "#2b233c" : (optionMouse.containsMouse ? "#241d33" : "transparent")
+                    color: modelData.code === root.lang ? "#241f30" : (optionMouse.containsMouse ? "#1d1a25" : "transparent")
                     Text {
                         anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
                         text: modelData.name
-                        color: modelData.code === root.lang ? "#c4b0ff" : "#e8ddff"
+                        color: modelData.code === root.lang ? "#c4b0ff" : "#e7ddff"
                         font.pixelSize: 13
                     }
                     MouseArea {

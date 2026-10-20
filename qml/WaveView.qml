@@ -25,7 +25,7 @@ Item {
         function onWave_results_jsonChanged() { root.refresh() }
     }
 
-    Rectangle { anchors.fill: parent; color: "#131019" }
+    Rectangle { anchors.fill: parent; color: "#0d0c10" }
 
     Column {
         anchors.fill: parent
@@ -37,20 +37,20 @@ Item {
             spacing: 18
             Text {
                 text: player.tr(player.language, "wavePage.title")
-                color: "#f7f3fa"
+                color: "#f5f2fb"
                 font { pixelSize: 32; weight: Font.Black }
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: player.tr(player.language, "wavePage.subtitle")
-                color: "#aaa4b5"
+                color: "#b3adc0"
                 font.pixelSize: 14
             }
             Item { width: parent.width - 400; height: 1 }
             Rectangle {
                 width: 120; height: 38; radius: 19
-                color: reload.containsMouse ? "#3b2e59" : "#2b233c"
-                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.refresh"); color: "#e8ddff"; font.bold: true }
+                color: reload.containsMouse ? "#302942" : "#241f30"
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.refresh"); color: "#e7ddff"; font.bold: true }
                 MouseArea {
                     id: reload; anchors.fill: parent; hoverEnabled: true
                     onClicked: root.player.load_wave()
@@ -60,7 +60,7 @@ Item {
 
         Text {
             text: player.tr(player.language, "wavePage.description")
-            color: "#aaa4b5"
+            color: "#b3adc0"
             font.pixelSize: 14
         }
 
@@ -76,13 +76,13 @@ Item {
                 width: list.width
                 height: 64
                 radius: 12
-                color: hover.containsMouse ? "#2b233c" : "#1d1728"
+                color: hover.containsMouse ? "#241f30" : "#14121a"
                 Row {
                     anchors.fill: parent
                     anchors.margins: 9
                     spacing: 14
                     Rectangle {
-                        width: 46; height: 46; radius: 10; color: "#302842"
+                        width: 46; height: 46; radius: 10; color: "#1b1923"
                         CoverArt {
                             id: waveArt
                             anchors.fill: parent
@@ -95,8 +95,8 @@ Item {
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width - 75
-                        Text { text: modelData.title; color: "#f4f0f7"; font.bold: true; elide: Text.ElideRight; width: parent.width }
-                        Text { text: modelData.artist + (modelData.album.length ? "  ·  " + modelData.album : ""); color: "#aaa4b5"; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
+                        Text { text: modelData.title; color: "#f5f2fb"; font.bold: true; elide: Text.ElideRight; width: parent.width }
+                        Text { text: modelData.artist + (modelData.album.length ? "  ·  " + modelData.album : ""); color: "#b3adc0"; font.pixelSize: 12; elide: Text.ElideRight; width: parent.width }
                     }
                 }
                 MouseArea {

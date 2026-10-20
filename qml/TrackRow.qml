@@ -14,7 +14,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: row.active ? "#2f2643" : (hover.containsMouse ? "#221c30" : "transparent")
+        color: row.active ? "#241f30" : (hover.containsMouse ? "#17151d" : "transparent")
     }
 
     MouseArea {
@@ -35,7 +35,7 @@ Item {
             width: 24
             anchors.verticalCenter: parent.verticalCenter
             text: (row.number + 1)
-            color: row.active ? "#c4b0ff" : "#8f879c"
+            color: row.active ? "#c4b0ff" : "#8a8496"
             font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter
         }
@@ -43,7 +43,7 @@ Item {
         Rectangle {
             width: 44; height: 44; radius: 9; clip: true
             anchors.verticalCenter: parent.verticalCenter
-            color: "#302842"
+            color: "#1b1923"
             CoverArt {
                 id: coverArt
                 anchors.fill: parent
@@ -65,7 +65,7 @@ Item {
             spacing: 2
             Text {
                 text: row.track.title || ""
-                color: "#f4f0f7"
+                color: "#f5f2fb"
                 font.bold: true
                 elide: Text.ElideRight
                 width: parent.width
@@ -75,7 +75,7 @@ Item {
                 width: parent.width
                 Text {
                     text: row.track.artist || ""
-                    color: artistHover.containsMouse ? "#c4b0ff" : "#aaa4b5"
+                    color: artistHover.containsMouse ? "#c4b0ff" : "#b3adc0"
                     font.pixelSize: 12
                     elide: Text.ElideRight
                     MouseArea {
@@ -94,7 +94,7 @@ Item {
                 }
                 Text {
                     text: row.track.album || ""
-                    color: albumHover.containsMouse ? "#c4b0ff" : "#8f879c"
+                    color: albumHover.containsMouse ? "#c4b0ff" : "#8a8496"
                     font.pixelSize: 12
                     elide: Text.ElideRight
                     width: parent.width - 120

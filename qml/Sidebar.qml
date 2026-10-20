@@ -10,7 +10,7 @@ Rectangle {
     signal settingsRequested()
     property string current: "search"
     property var playlists: []
-    color: "#131019"
+    color: "#0e0e13"
 
     readonly property var nav: [
         { icon: "\uf002", label: "nav.search", target: "search" },
@@ -43,14 +43,15 @@ Rectangle {
 
         Row {
             height: 58
-            spacing: 6
+            spacing: 8
             Image {
                 source: "../assets/exmusic-with-no-bg.svg"
 
-                sourceSize.width: 28
-                sourceSize.height: 28
+                sourceSize.width: 48
+                sourceSize.height: 48
 
-                width: 40
+                width: 48
+                height: 48
                 fillMode: Image.Pad
                 horizontalAlignment: Image.AlignHCenter
 
@@ -58,7 +59,7 @@ Rectangle {
             }
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "EXmusic"; color: "#b69cff"; font { pixelSize: 25; bold: true; letterSpacing: 2 } }
+                Text { text: "EXmusic"; color: "#b69cff"; font { pixelSize: 28; bold: true; letterSpacing: 2 } }
             }
         }
         Item { width: 1; height: 8 }
@@ -71,17 +72,17 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     radius: 14
-                    color: root.current === modelData.target ? "#2b233c" : (ma.containsMouse ? "#211b2d" : "transparent")
+                    color: root.current === modelData.target ? "#241f30" : (ma.containsMouse ? "#14131b" : "transparent")
                     Rectangle { width: 3; height: 22; radius: 2; color: "#b69cff"; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; visible: root.current === modelData.target }
                 }
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left
                     spacing: 12
-                    Icon { glyph: modelData.icon; tint: root.current === modelData.target ? "#d8ccff" : "#8e8899"; font.pixelSize: 18; width: 40; horizontalAlignment: Text.AlignHCenter }
+                    Icon { glyph: modelData.icon; tint: root.current === modelData.target ? "#d8ccff" : "#8a8496"; font.pixelSize: 18; width: 40; horizontalAlignment: Text.AlignHCenter }
                     Text {
                         text: player.tr(player.language, modelData.label)
-                        color: root.current === modelData.target ? "#ffffff" : "#aaa4b5"
+                        color: root.current === modelData.target ? "#f5f2fb" : "#b3adc0"
                         font { pixelSize: 14; bold: root.current === modelData.target }
                     }
                 }
@@ -126,7 +127,7 @@ Rectangle {
                     anchors.fill: parent
                     spacing: 12
                     Rectangle {
-                        width: 40; height: 40; radius: 6; clip: true; color: "#302842"
+                        width: 40; height: 40; radius: 6; clip: true; color: "#1b1923"
                         anchors.verticalCenter: parent.verticalCenter
                         CoverArt {
                             id: playlistArt
@@ -142,12 +143,12 @@ Rectangle {
                         width: parent.width - 52
                         Text {
                             text: modelData.title
-                            color: plHover.containsMouse ? "#ffffff" : "#d6d0e0"
+                            color: plHover.containsMouse ? "#f5f2fb" : "#d5cfe0"
                             font { pixelSize: 13; bold: true }
                             width: parent.width
                             elide: Text.ElideRight
                         }
-                        Text { text: player.tracks(player.language, modelData.trackCount); color: "#9a9a9a"; font.pixelSize: 12 }
+                        Text { text: player.tracks(player.language, modelData.trackCount); color: "#8a8496"; font.pixelSize: 12 }
                     }
                 }
                 MouseArea {
@@ -165,8 +166,8 @@ Rectangle {
         id: settings
         anchors { left: parent.left; bottom: profile.top; leftMargin: 16; bottomMargin: 20 }
         spacing: 12
-        Icon { glyph: "\uf013"; tint: "#aaa4b5"; font.pixelSize: 17; width: 40; horizontalAlignment: Text.AlignHCenter }
-        Text { text: player.tr(player.language, "sidebar.settings"); color: "#aaa4b5"; font.pixelSize: 14 }
+        Icon { glyph: "\uf013"; tint: "#b3adc0"; font.pixelSize: 17; width: 40; horizontalAlignment: Text.AlignHCenter }
+        Text { text: player.tr(player.language, "sidebar.settings"); color: "#b3adc0"; font.pixelSize: 14 }
     }
     MouseArea { anchors.fill: settings; cursorShape: Qt.PointingHandCursor; onClicked: root.settingsRequested() }
 
@@ -175,8 +176,8 @@ Rectangle {
         anchors { left: parent.left; bottom: parent.bottom; leftMargin: 16; bottomMargin: 20 }
         spacing: 12
         Rectangle {
-            width: 40; height: 40; radius: 20; color: "#302842"
-            border { width: 2; color: "#9b7df5" }
+            width: 40; height: 40; radius: 20; color: "#1b1923"
+            border { width: 2; color: "#c4b0ff" }
             clip: true
             CoverArt {
                 id: avatarArt
@@ -190,7 +191,7 @@ Rectangle {
         Column {
             y: (parent.height - height) / 2
             spacing: 2
-            Text { text: player && player.account_name.length ? player.account_name : "Yandex Music"; color: "#f4f0f7"; font { pixelSize: 14; bold: true } }
+            Text { text: player && player.account_name.length ? player.account_name : "Yandex Music"; color: "#f5f2fb"; font { pixelSize: 14; bold: true } }
         }
     }
 }

@@ -4,7 +4,7 @@ import app.backend
 Rectangle {
     id: root
     property var player
-    color: "#110e18"
+    color: "#08080c"
 
     Column {
         anchors.centerIn: parent
@@ -13,14 +13,14 @@ Rectangle {
 
         Text {
             text: player.tr(player.language, "login.title")
-            color: "#f7f3fa"
+            color: "#f5f2fb"
             font { pixelSize: 32; weight: Font.Black }
         }
         Text {
             width: parent.width
             wrapMode: Text.WordWrap
             text: player.tr(player.language, "login.description")
-            color: "#aaa4b5"
+            color: "#b3adc0"
             font.pixelSize: 14
         }
         LanguageSelector {
@@ -31,43 +31,43 @@ Rectangle {
             id: clientId
             width: parent.width
             height: 44
-            color: "#211b2d"
+            color: "#14131b"
             radius: 10
-            border.color: "#3b3248"
+            border.color: "#2e2a3a"
             TextInput {
                 id: clientIdInput
                 anchors.fill: parent
                 anchors.margins: 12
-                color: "white"
+                color: "#f5f2fb"
                 selectByMouse: true
                 clip: true
-                Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "login.clientId"); color: "#8f879c"; visible: !parent.text.length }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "login.clientId"); color: "#8a8496"; visible: !parent.text.length }
             }
         }
         Rectangle {
             id: clientSecret
             width: parent.width
             height: 44
-            color: "#211b2d"
+            color: "#14131b"
             radius: 10
-            border.color: "#3b3248"
+            border.color: "#2e2a3a"
             TextInput {
                 id: clientSecretInput
                 anchors.fill: parent
                 anchors.margins: 12
-                color: "white"
+                color: "#f5f2fb"
                 echoMode: TextInput.Password
                 selectByMouse: true
                 clip: true
-                Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "login.clientSecret"); color: "#8f879c"; visible: !parent.text.length }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "login.clientSecret"); color: "#8a8496"; visible: !parent.text.length }
             }
         }
         Rectangle {
             width: parent.width
             height: 46
             radius: 12
-            color: mouse.containsMouse ? "#c4b0ff" : "#a98cf0"
-            Text { anchors.centerIn: parent; text: player && player.login_state === "requesting" ? player.tr(player.language, "login.requesting") : player.tr(player.language, "login.continue"); color: "#20192c"; font.bold: true }
+            color: mouse.containsMouse ? "#c4b0ff" : "#c4b0ff"
+            Text { anchors.centerIn: parent; text: player && player.login_state === "requesting" ? player.tr(player.language, "login.requesting") : player.tr(player.language, "login.continue"); color: "#16101f"; font.bold: true }
             MouseArea {
                 id: mouse
                 anchors.fill: parent
@@ -81,11 +81,11 @@ Rectangle {
             width: parent.width
             spacing: 10
             visible: player && (player.login_state === "waiting" || player.login_state === "error")
-            Text { text: player.tr(player.language, "login.instruction"); color: "#d7cfdf"; font.pixelSize: 14 }
+            Text { text: player.tr(player.language, "login.instruction"); color: "#d5cfe0"; font.pixelSize: 14 }
             Text { text: player ? player.user_code : ""; color: "#c4b0ff"; font { pixelSize: 34; bold: true; letterSpacing: 4 } }
             Rectangle {
-                width: 220; height: 40; radius: 10; color: "#2b233c"
-                Text { anchors.centerIn: parent; text: player.tr(player.language, "login.openPage"); color: "#eee8ff" }
+                width: 220; height: 40; radius: 10; color: "#241f30"
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "login.openPage"); color: "#efe9ff" }
                 MouseArea {
                     anchors.fill: parent
                     enabled: player && player.verification_url.length > 0

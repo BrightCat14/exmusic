@@ -22,7 +22,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#131019"
+        color: "#0d0c10"
     }
 
     Column {
@@ -33,7 +33,7 @@ Item {
 
         Text {
             text: player.tr(player.language, "search.title")
-            color: "#f7f3fa"
+            color: "#f5f2fb"
             font { pixelSize: 25; weight: Font.Black }
         }
 
@@ -41,20 +41,20 @@ Item {
             width: parent.width
             height: 42
             radius: 12
-            color: "#211b2d"
-            border.color: "#3b3248"
+            color: "#14131b"
+            border.color: "#2e2a3a"
             TextInput {
                 id: query
                 anchors.fill: parent
                 anchors.margins: 12
-                color: "white"
+                color: "#f5f2fb"
                 font.pixelSize: 15
                 selectByMouse: true
                 clip: true
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: player.tr(player.language, "search.placeholder")
-                    color: "#8f879c"
+                    color: "#8a8496"
                     visible: !parent.text.length
                 }
                 onAccepted: if (root.player) root.player.search(text)

@@ -29,7 +29,7 @@ Item {
         function onFeed_jsonChanged() { root.refresh() }
     }
 
-    Rectangle { anchors.fill: parent; color: "#131019" }
+    Rectangle { anchors.fill: parent; color: "#0d0c10" }
 
     Column {
         anchors.fill: parent
@@ -43,7 +43,7 @@ Item {
             Text {
                 id: titleText
                 text: player.tr(player.language, "feed.title")
-                color: "#f7f3fa"
+                color: "#f5f2fb"
                 font { pixelSize: 30; weight: Font.Black }
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -51,8 +51,8 @@ Item {
             Rectangle {
                 width: 130; height: 38; radius: 19
                 anchors.verticalCenter: parent.verticalCenter
-                color: playAll.containsMouse ? "#a98cf7" : "#9b7df5"
-                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.playAll"); color: "#1a1326"; font.bold: true; font.pixelSize: 13 }
+                color: playAll.containsMouse ? "#d6c8ff" : "#c4b0ff"
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.playAll"); color: "#16101f"; font.bold: true; font.pixelSize: 13 }
                 MouseArea {
                     id: playAll
                     anchors.fill: parent
@@ -64,8 +64,8 @@ Item {
             Rectangle {
                 width: 110; height: 38; radius: 19
                 anchors.verticalCenter: parent.verticalCenter
-                color: refreshBtn.containsMouse ? "#3b2e59" : "#2b233c"
-                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.refresh"); color: "#e8ddff"; font.bold: true; font.pixelSize: 13 }
+                color: refreshBtn.containsMouse ? "#302942" : "#241f30"
+                Text { anchors.centerIn: parent; text: player.tr(player.language, "common.refresh"); color: "#e7ddff"; font.bold: true; font.pixelSize: 13 }
                 MouseArea {
                     id: refreshBtn
                     anchors.fill: parent
@@ -80,7 +80,7 @@ Item {
             text: root.player.loading && root.tracks.length === 0
                   ? player.tr(player.language, "common.loading")
                   : (root.tracks.length ? player.tracks(player.language, root.tracks.length) : player.tr(player.language, "feed.picks"))
-            color: "#aaa4b5"
+            color: "#b3adc0"
             font.pixelSize: 13
         }
 

@@ -81,11 +81,39 @@ Item {
         id: backgroundSlot
         anchors.fill: parent
         z: -1
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: "#38234f" }
-            GradientStop { position: 0.55; color: "#1b152b" }
-            GradientStop { position: 1.0; color: "#0e0c14" }
+        color: "#08080c"
+
+        Rectangle {
+            anchors.fill: parent
+            opacity: 0.52
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop {
+                    position: 0.0
+                    color: root.player ? root.player.mood_top_color : "#ECDEFF"
+                    Behavior on color { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+                }
+                GradientStop {
+                    position: 0.52
+                    color: root.player ? root.player.mood_mid_color : "#D8C2FF"
+                    Behavior on color { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+                }
+                GradientStop {
+                    position: 1.0
+                    color: root.player ? root.player.mood_bottom_color : "#C3A4FF"
+                    Behavior on color { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+                }
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0.0; color: "#0008080c" }
+                GradientStop { position: 0.42; color: "#5508080c" }
+                GradientStop { position: 1.0; color: "#f208080c" }
+            }
         }
     }
 
@@ -100,7 +128,7 @@ Item {
         id: artist
         z: 1
         text: player.artist
-        color: "#f7f3fa"
+        color: "#f5f2fb"
         font { pixelSize: 88; weight: Font.Black }
         anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; verticalCenterOffset: -160 }
     }
@@ -110,8 +138,8 @@ Item {
         z: 2
         width: 150; height: 36; radius: 18
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 50 }
-        color: waveMenuOpen ? "#9b7df5" : "#241d32"
-        Text { anchors.centerIn: parent; text: player.tr(player.language, "player.wave") + "  ▾"; color: waveMenuOpen ? "#21182d" : "#d8ccff"; font.pixelSize: 13; font.bold: true }
+        color: waveMenuOpen ? "#c4b0ff" : "#18161f"
+        Text { anchors.centerIn: parent; text: player.tr(player.language, "player.wave") + "  ▾"; color: waveMenuOpen ? "#16101f" : "#d8ccff"; font.pixelSize: 13; font.bold: true }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: waveMenuOpen = !waveMenuOpen }
     }
 
@@ -122,9 +150,9 @@ Item {
         width: 430
         height: 300
         radius: 14
-        color: "#211b2d"
+        color: "#14131b"
         border.width: 1
-        border.color: "#493b68"
+        border.color: "#3b3549"
         anchors { horizontalCenter: waveButton.horizontalCenter; top: waveButton.bottom; topMargin: 8 }
         Row {
             anchors.fill: parent
@@ -182,8 +210,8 @@ Item {
             required property var modelData
             width: 128; height: 31; radius: 8
             color: modelData.seed === selectedWaveSeed(modelData.category)
-                   ? "#3b2e59" : (optionMouse.containsMouse ? "#302542" : "transparent")
-            Text { anchors.centerIn: parent; text: player.tr(player.language, modelData.label); color: "#e8ddff"; font.pixelSize: 12 }
+                   ? "#241f30" : (optionMouse.containsMouse ? "#1d1a25" : "transparent")
+            Text { anchors.centerIn: parent; text: player.tr(player.language, modelData.label); color: "#e7ddff"; font.pixelSize: 12 }
             MouseArea {
                 id: optionMouse
                 anchors.fill: parent
@@ -206,9 +234,9 @@ Item {
         width: 148; height: 148; radius: 18
         anchors { horizontalCenter: parent.horizontalCenter; top: artist.bottom; topMargin: 54 }
         gradient: Gradient {
-            GradientStop { position: 0; color: "#e7b4be" }
-            GradientStop { position: 0.52; color: "#775b9e" }
-            GradientStop { position: 1; color: "#181523" }
+            GradientStop { position: 0; color: "#d8c2ff" }
+            GradientStop { position: 0.52; color: "#6d5a9e" }
+            GradientStop { position: 1; color: "#110f17" }
         }
         CoverArt {
             id: coverArt
@@ -217,7 +245,7 @@ Item {
             backgroundColor: "transparent"
             source: player ? player.cover_url : ""
         }
-        Text { anchors.centerIn: parent; text: coverArt.hasImage ? "" : "EX"; color: "#fff4fb"; font { pixelSize: 25; weight: Font.Black; letterSpacing: 3 } }
+        Text { anchors.centerIn: parent; text: coverArt.hasImage ? "" : "EX"; color: "#f5f2fb"; font { pixelSize: 25; weight: Font.Black; letterSpacing: 3 } }
     }
 
     // Action row
@@ -260,9 +288,9 @@ Item {
                 width: 48
                 height: 210
                 radius: 24
-                color: "#221d2d"
+                color: "#14131b"
                 border.width: 1
-                border.color: "#3b3248"
+                border.color: "#2e2a3a"
                 visible: volumeControl.hovering
                 z: 20
 
@@ -271,7 +299,7 @@ Item {
                     anchors.topMargin: 12
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: player.volume_percent + "%"
-                    color: "#eee8ff"
+                    color: "#efe9ff"
                     font { pixelSize: 12; bold: true }
                 }
                 Rectangle {
@@ -281,7 +309,7 @@ Item {
                     width: 4
                     height: 145
                     radius: 2
-                    color: "#493b68"
+                    color: "#3b3549"
                     Rectangle {
                         anchors.bottom: parent.bottom
                         width: parent.width
@@ -303,8 +331,8 @@ Item {
         IconButton { glyph: "\uf7a9" } // dislike
         Rectangle {
             width: 262; height: 48; radius: 24
-            color: "#221d2d"
-            border.width: 1; border.color: "#3b3248"
+            color: "#14131b"
+            border.width: 1; border.color: "#2e2a3a"
             clip: true
             Canvas {
                 id: timeline
@@ -323,11 +351,11 @@ Item {
                     ctx.lineTo(radius, height)
                     ctx.arc(radius, radius, radius, Math.PI / 2, Math.PI * 1.5)
                     ctx.closePath()
-                    ctx.fillStyle = "#221d2d"
+                    ctx.fillStyle = "#14131b"
                     ctx.fill()
                     ctx.save()
                     ctx.clip()
-                    ctx.fillStyle = "#493b68"
+                    ctx.fillStyle = "#3b3549"
                     ctx.fillRect(0, 0, progress, height)
                     ctx.restore()
                 }
@@ -337,7 +365,7 @@ Item {
                 text: root.timelineHover
                       ? root.formatTime((root.timelineDragging || root.pendingSeek) ? root.dragPosition : player.position_ms) + " / " + root.formatTime(player.duration_ms)
                       : player.title
-                color: "#d7cfdf"
+                color: "#d5cfe0"
                 font { pixelSize: 16; bold: true }
                 elide: Text.ElideRight
                 width: parent.width - 24
@@ -375,7 +403,7 @@ Item {
                 onCanceled: root.timelineDragging = false
             }
         }
-        IconButton { glyph: player.liked ? "\uf004" : "\uf08a"; tint: player.liked ? "#ff7da8" : "white"
+        IconButton { glyph: player.liked ? "\uf004" : "\uf08a"; tint: player.liked ? "#dbb5ff" : "#f5f2fb"
                      onClicked: player.toggle_like() }
         IconButton { glyph: "\uf1e6" }
         ThreeDotsMenu {
@@ -395,7 +423,7 @@ Item {
         TransportGlyph { glyph: "\uf048"; onClicked: player.previous() }
          IconButton {
              size: 66
-             tint: "#20192c"
+             tint: "#16101f"
              color: "#c4b0ff"
              border.width: 0
              glyph: player.playing ? "\uf04c" : "\uf04b"
@@ -413,9 +441,9 @@ Item {
         width: 420
         height: parent.height - 120
         radius: 18
-        color: "#141019"
+        color: "#111016"
         border.width: 1
-        border.color: "#493b68"
+        border.color: "#3b3549"
         anchors { right: parent.right; rightMargin: 26; verticalCenter: parent.verticalCenter }
         Column {
             anchors.fill: parent
@@ -424,11 +452,11 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "lyrics.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "lyrics.title"); color: "#f5f2fb"; font { pixelSize: 18; bold: true } }
                 Text {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "✕"; color: "#aaa4b5"; font.pixelSize: 16
+                    text: "✕"; color: "#b3adc0"; font.pixelSize: 16
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.lyricsOpen = false }
                 }
             }
@@ -441,7 +469,7 @@ Item {
                     id: lyricsText
                     width: parent.width
                     text: player.lyric.length ? player.lyric : player.tr(player.language, "lyrics.empty")
-                    color: "#d7cfdf"
+                    color: "#d5cfe0"
                     font.pixelSize: 14
                     wrapMode: Text.Wrap
                 }
@@ -457,9 +485,9 @@ Item {
         width: 420
         height: parent.height - 120
         radius: 18
-        color: "#141019"
+        color: "#111016"
         border.width: 1
-        border.color: "#493b68"
+        border.color: "#3b3549"
         anchors { left: parent.left; leftMargin: 26; verticalCenter: parent.verticalCenter }
         Column {
             anchors.fill: parent
@@ -468,11 +496,11 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "queue.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "queue.title"); color: "#f5f2fb"; font { pixelSize: 18; bold: true } }
                 Text {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "✕"; color: "#aaa4b5"; font.pixelSize: 16
+                    text: "✕"; color: "#b3adc0"; font.pixelSize: 16
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.queueOpen = false }
                 }
             }
@@ -489,17 +517,17 @@ Item {
                     width: queueList.width
                     height: 44
                     radius: 8
-                    color: index === player.queue_position ? "#33284a" : (qh.containsMouse ? "#262033" : "transparent")
+                    color: index === player.queue_position ? "#241f30" : (qh.containsMouse ? "#17151d" : "transparent")
                     Row {
                         anchors.fill: parent
                         anchors.margins: 6
                         spacing: 10
-                        Text { text: (index + 1); color: "#8f879c"; font.pixelSize: 12; width: 18; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: (index + 1); color: "#8a8496"; font.pixelSize: 12; width: 18; anchors.verticalCenter: parent.verticalCenter }
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 40
-                            Text { text: modelData.title; color: "#f4f0f7"; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
-                            Text { text: modelData.artist; color: "#aaa4b5"; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
+                            Text { text: modelData.title; color: "#f5f2fb"; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
+                            Text { text: modelData.artist; color: "#b3adc0"; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
                         }
                     }
                     MouseArea { id: qh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: player.jump_to(index) }
@@ -516,7 +544,7 @@ Item {
         Icon {
             anchors.centerIn: parent
             glyph: parent.glyph
-            tint: "white"
+            tint: "#f5f2fb"
             opacity: parent.lit ? 1 : 0.55
             font.pixelSize: 22
         }
@@ -528,6 +556,6 @@ Item {
         property color fill
         height: 26; radius: 13; color: fill
         width: t.implicitWidth + 24
-        Text { id: t; anchors.centerIn: parent; text: parent.label; color: "white"; font { pixelSize: 12; bold: true } }
+        Text { id: t; anchors.centerIn: parent; text: parent.label; color: "#f5f2fb"; font { pixelSize: 12; bold: true } }
     }
 }

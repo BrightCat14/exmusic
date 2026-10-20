@@ -12,8 +12,17 @@ ShaderEffect {
     property real displayBeat: 0
     property vector4d audio: Qt.vector4d(
         displayBass, displayMid, displayHigh, displayBeat)
+    property color paletteTop: player && player.mood_top_color.length ? player.mood_top_color : "#ECDEFF"
+    property color paletteMid: player && player.mood_mid_color.length ? player.mood_mid_color : "#D8C2FF"
+    property color paletteBottom: player && player.mood_bottom_color.length ? player.mood_bottom_color : "#C3A4FF"
+    property color paletteGlow: player && player.mood_glow_color.length ? player.mood_glow_color : "#B18CFF"
 
     fragmentShader: "VisualizerShader.frag.qsb"
+
+    Behavior on paletteTop { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+    Behavior on paletteMid { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+    Behavior on paletteBottom { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+    Behavior on paletteGlow { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
 
     Timer {
         interval: 16

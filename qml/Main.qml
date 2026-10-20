@@ -11,7 +11,7 @@ Window {
     minimumWidth: 900
     minimumHeight: 600
     visible: true
-    color: "#0d0b12"
+    color: "#08080c"
     title: "EXmusic"
     flags: Qt.Window | Qt.FramelessWindowHint
 
@@ -172,10 +172,10 @@ Window {
             ]
             delegate: Rectangle {
                 width: 30; height: 28; radius: 8
-                color: control.containsMouse ? "#2d2938" : "transparent"
+                color: control.containsMouse ? "#1a1820" : "transparent"
                 Text {
                     anchors.centerIn: parent
-                    text: modelData.g; color: "#c8c2d2"; font.pixelSize: 13
+                    text: modelData.g; color: "#c4becf"; font.pixelSize: 13
                 }
                 id: control
                 MouseArea {

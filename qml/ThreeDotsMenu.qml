@@ -15,7 +15,7 @@ Item {
     IconButton {
         anchors.fill: parent
         glyph: "\uf142"
-        tint: root.open ? "#c4b0ff" : "white"
+        tint: root.open ? "#c4b0ff" : "#f5f2fb"
         onClicked: root.open = !root.open
     }
 
@@ -26,9 +26,9 @@ Item {
         width: 190
         height: 92
         radius: 12
-        color: "#171320"
+        color: "#111016"
         border.width: 1
-        border.color: "#332b45"
+        border.color: "#2e2a3a"
         x: (root.width - width) / 2
         y: root.direction === "up" ? -height - 10 : root.height + 10
 
@@ -59,14 +59,14 @@ Item {
         width: parent.width
         height: 38
         radius: 8
-        color: miMouse.containsMouse ? "#241d33" : "transparent"
+        color: miMouse.containsMouse ? "#1d1a25" : "transparent"
 
         Row {
             anchors.fill: parent
             anchors.leftMargin: 10
             spacing: 10
             Icon { glyph: mi.glyph; tint: "#d8ccff"; font.pixelSize: 15; width: 18; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: mi.label; color: "#ece6f5"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: mi.label; color: "#ece7f4"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
         }
         MouseArea {
             id: miMouse

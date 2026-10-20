@@ -1,5 +1,6 @@
 mod i18n;
 mod integrations;
+mod mood;
 mod player;
 mod tray;
 mod yandex;

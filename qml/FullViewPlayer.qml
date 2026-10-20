@@ -6,6 +6,7 @@ Item {
     property bool lyricsOpen: false
     property bool queueOpen: false
     property var queueItems: []
+    property real backgroundBlur: 48
 
     signal collapse()
 
@@ -28,9 +29,10 @@ Item {
         function onQueue_jsonChanged() { root.refreshQueue() }
     }
 
-    Rectangle { anchors.fill: parent; color: "#0a0810" }
+    Rectangle { anchors.fill: parent; color: "#08080c" }
 
     Image {
+        id: backgroundImage
         anchors.fill: parent
         source: player ? player.cover_url : ""
         sourceSize: Qt.size(48, 48)
@@ -38,13 +40,42 @@ Item {
         smooth: true
         asynchronous: true
         opacity: 0.55
+        layer.enabled: root.backgroundBlur > 0
+        layer.effect: ShaderEffect {
+            property vector2d texelSize: Qt.vector2d(1 / Math.max(1, backgroundImage.width),
+                                                     1 / Math.max(1, backgroundImage.height))
+            property real radius: root.backgroundBlur
+            fragmentShader: "GaussianBlur.frag.qsb"
+        }
+    }
+    Rectangle {
+        anchors.fill: parent
+        opacity: 0.45
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop {
+                position: 0.0
+                color: root.player ? root.player.mood_top_color : "#ECDEFF"
+                Behavior on color { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+            }
+            GradientStop {
+                position: 0.52
+                color: root.player ? root.player.mood_mid_color : "#D8C2FF"
+                Behavior on color { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+            }
+            GradientStop {
+                position: 1.0
+                color: root.player ? root.player.mood_bottom_color : "#C3A4FF"
+                Behavior on color { ColorAnimation { duration: 900; easing.type: Easing.InOutQuad } }
+            }
+        }
     }
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
             orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: "#991a132a" }
-            GradientStop { position: 1.0; color: "#f208070c" }
+            GradientStop { position: 0.0; color: "#6608080c" }
+            GradientStop { position: 1.0; color: "#f208080c" }
         }
     }
 
@@ -57,9 +88,9 @@ Item {
             width: 240; height: 240; radius: 22
             anchors.horizontalCenter: parent.horizontalCenter
             gradient: Gradient {
-                GradientStop { position: 0; color: "#e7b4be" }
-                GradientStop { position: 0.52; color: "#775b9e" }
-                GradientStop { position: 1; color: "#181523" }
+                GradientStop { position: 0; color: "#d8c2ff" }
+                GradientStop { position: 0.52; color: "#6d5a9e" }
+                GradientStop { position: 1; color: "#110f17" }
             }
             CoverArt {
                 id: bigCoverArt
@@ -68,13 +99,13 @@ Item {
                 backgroundColor: "transparent"
                 source: player ? player.cover_url : ""
             }
-            Text { anchors.centerIn: parent; text: bigCoverArt.hasImage ? "" : "EX"; color: "#fff4fb"; font { pixelSize: 40; weight: Font.Black; letterSpacing: 4 } }
+            Text { anchors.centerIn: parent; text: bigCoverArt.hasImage ? "" : "EX"; color: "#f5f2fb"; font { pixelSize: 40; weight: Font.Black; letterSpacing: 4 } }
         }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: player ? player.title : ""
-            color: "#f7f3fa"
+            color: "#f5f2fb"
             font { pixelSize: 30; weight: Font.Black }
             elide: Text.ElideRight
             width: 560
@@ -83,7 +114,7 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: player ? player.artist : ""
-            color: "#b6adc7"
+            color: "#b8b2c4"
             font.pixelSize: 16
         }
 
@@ -103,11 +134,11 @@ Item {
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width; height: 8; radius: 4
-                color: "#2effffff"
+                color: "#2ec4b0ff"
                 Rectangle {
                     width: parent.width * scrub.progress()
                     height: parent.height; radius: 4
-                    color: "#b79bff"
+                    color: "#c4b0ff"
                 }
             }
             MouseArea {
@@ -135,26 +166,26 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             Text {
                 text: root.formatTime(scrub.dragging ? scrub.dragMs : (player ? player.position_ms : 0))
-                color: "#b6adc7"; font.pixelSize: 12
+                color: "#b8b2c4"; font.pixelSize: 12
             }
             Item { width: parent.width - 80; height: 1 }
             Text {
                 text: root.formatTime(player ? player.duration_ms : 0)
-                color: "#b6adc7"; font.pixelSize: 12
+                color: "#b8b2c4"; font.pixelSize: 12
             }
         }
 
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 20
-            IconButton { size: 52; glyph: "\uf074"; tint: player && player.shuffle ? "#c4b0ff" : "white"
+            IconButton { size: 52; glyph: "\uf074"; tint: player && player.shuffle ? "#c4b0ff" : "#f5f2fb"
                          onClicked: player.toggle_shuffle() }
             IconButton { size: 52; glyph: "\uf048"; onClicked: player.previous() }
             IconButton { size: 70; glyph: player && player.playing ? "\uf04c" : "\uf04b"
-                         tint: "#c4b0ff"; color: "#20192c"; border.width: 0
+                         tint: "#16101f"; color: "#c4b0ff"; border.width: 0
                          onClicked: player.toggle_play() }
             IconButton { size: 52; glyph: "\uf051"; onClicked: player.next() }
-            IconButton { size: 52; glyph: "\uf01e"; tint: player && player.repeat ? "#c4b0ff" : "white"
+            IconButton { size: 52; glyph: "\uf01e"; tint: player && player.repeat ? "#c4b0ff" : "#f5f2fb"
                          onClicked: player.toggle_repeat() }
         }
 
@@ -162,7 +193,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 14
             IconButton { size: 46; glyph: player && player.liked ? "\uf004" : "\uf08a"
-                         tint: player && player.liked ? "#ff7da8" : "white"
+                         tint: player && player.liked ? "#dbb5ff" : "#f5f2fb"
                          onClicked: player.toggle_like() }
             Item {
                 width: 48; height: 48
@@ -190,9 +221,9 @@ Item {
         width: 420
         height: parent.height - 120
         radius: 18
-        color: "#141019"
+        color: "#111016"
         border.width: 1
-        border.color: "#2f2740"
+        border.color: "#2e2a3a"
         anchors { right: parent.right; rightMargin: 26; verticalCenter: parent.verticalCenter }
         Column {
             anchors.fill: parent
@@ -201,8 +232,8 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "lyrics.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
-                Text { text: "✕"; color: "#aaa4b5"; font.pixelSize: 16
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "lyrics.title"); color: "#f5f2fb"; font { pixelSize: 18; bold: true } }
+                Text { text: "✕"; color: "#b3adc0"; font.pixelSize: 16
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.lyricsOpen = false } }
@@ -216,7 +247,7 @@ Item {
                     id: lyricsText
                     width: parent.width
                     text: player && player.lyric.length ? player.lyric : player.tr(player.language, "lyrics.empty")
-                    color: "#d7cfdf"
+                    color: "#d5cfe0"
                     font.pixelSize: 14
                     wrapMode: Text.Wrap
                 }
@@ -231,9 +262,9 @@ Item {
         width: 420
         height: parent.height - 120
         radius: 18
-        color: "#141019"
+        color: "#111016"
         border.width: 1
-        border.color: "#2f2740"
+        border.color: "#2e2a3a"
         anchors { left: parent.left; leftMargin: 26; verticalCenter: parent.verticalCenter }
         Column {
             anchors.fill: parent
@@ -242,8 +273,8 @@ Item {
             Item {
                 width: parent.width
                 height: 24
-                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "queue.title"); color: "#f4f0f7"; font { pixelSize: 18; bold: true } }
-                Text { text: "✕"; color: "#aaa4b5"; font.pixelSize: 16
+                Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; text: player.tr(player.language, "queue.title"); color: "#f5f2fb"; font { pixelSize: 18; bold: true } }
+                Text { text: "✕"; color: "#b3adc0"; font.pixelSize: 16
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.queueOpen = false } }
@@ -261,17 +292,17 @@ Item {
                     width: queueList.width
                     height: 44
                     radius: 8
-                    color: index === player.queue_position ? "#33284a" : (qh.containsMouse ? "#231d30" : "transparent")
+                    color: index === player.queue_position ? "#241f30" : (qh.containsMouse ? "#17151d" : "transparent")
                     Row {
                         anchors.fill: parent
                         anchors.margins: 6
                         spacing: 10
-                        Text { text: (index + 1); color: "#8f879c"; font.pixelSize: 12; width: 18; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: (index + 1); color: "#8a8496"; font.pixelSize: 12; width: 18; anchors.verticalCenter: parent.verticalCenter }
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
                             width: parent.width - 40
-                            Text { text: modelData.title; color: "#f4f0f7"; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
-                            Text { text: modelData.artist; color: "#aaa4b5"; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
+                            Text { text: modelData.title; color: "#f5f2fb"; font.pixelSize: 13; elide: Text.ElideRight; width: parent.width }
+                            Text { text: modelData.artist; color: "#b3adc0"; font.pixelSize: 11; elide: Text.ElideRight; width: parent.width }
                         }
                     }
                     MouseArea { id: qh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: player.jump_to(index) }

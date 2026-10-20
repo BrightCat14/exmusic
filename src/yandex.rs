@@ -62,6 +62,8 @@ pub struct TrackItem {
     pub cover_url: String,
     pub cover_source_url: String,
     pub duration_ms: i64,
+    pub features: crate::mood::AudioFeatures,
+    pub cover_palette: Option<crate::mood::MoodPalette>,
 }
 
 pub struct WaveBatch {
@@ -1202,11 +1204,11 @@ fn xml_tag(xml: &str, tag: &str) -> Result<String, Error> {
     Ok(value.to_owned())
 }
 
-fn track_item(value: &Value) -> Option<TrackItem> {
-    let value = value
+fn track_item(source: &Value) -> Option<TrackItem> {
+    let value = source
         .get("track")
         .filter(|track| track.get("title").is_some())
-        .unwrap_or(value);
+        .unwrap_or(source);
     let id = value.get("id").map(id_string).filter(|id| !id.is_empty())?;
     let title = value.get("title")?.as_str()?.to_owned();
     let artist_node = value
@@ -1229,6 +1231,11 @@ fn track_item(value: &Value) -> Option<TrackItem> {
         .unwrap_or("")
         .to_owned();
     let album_id = album_node.map(id_string).unwrap_or_default();
+    let album_genre = album_node
+        .and_then(|album| album.get("genre"))
+        .and_then(Value::as_str);
+    let features = crate::mood::features_from_track(source, album_genre);
+    let cover_palette = crate::mood::cover_palette(source);
     let cover_uri =
         cover_uri_value(value).or_else(|| album_node.and_then(cover_uri_value));
     let cover_url = cover_uri
@@ -1251,5 +1258,7 @@ fn track_item(value: &Value) -> Option<TrackItem> {
             .or_else(|| value.get("duration_ms"))
             .and_then(Value::as_i64)
             .unwrap_or(0),
+        features,
+        cover_palette,
     })
 }
