@@ -807,6 +807,7 @@ fn update_discord(
 
     let start = now_ms() - state.position_ms.max(0);
     let mut activity = Activity::new()
+        .name(state.title.as_str())
         .details(state.title.as_str())
         .state(state.artist.as_str())
         .activity_type(ActivityType::Listening)
