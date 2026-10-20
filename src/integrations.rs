@@ -1,4 +1,8 @@
+use std::collections::hash_map::DefaultHasher;
 use std::ffi::c_void;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
+use std::sync::OnceLock;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -619,6 +623,61 @@ fn ensure_media(
     true
 }
 
+fn cover_cache_path(url: &str) -> Option<PathBuf> {
+    let mut hasher = DefaultHasher::new();
+    url.hash(&mut hasher);
+    let name = format!("{:016x}.jpg", hasher.finish());
+    Some(
+        dirs::data_local_dir()
+            .or_else(dirs::home_dir)?
+            .join("exmusic")
+            .join("covers")
+            .join(name),
+    )
+}
+
+fn cover_client() -> Option<&'static reqwest::blocking::Client> {
+    static CLIENT: OnceLock<Option<reqwest::blocking::Client>> = OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(3))
+                .http1_only()
+                .build()
+                .ok()
+        })
+        .as_ref()
+}
+
+fn local_cover_url(url: &str) -> Option<String> {
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return None;
+    }
+    let path = cover_cache_path(url)?;
+    let cached = path
+        .metadata()
+        .map(|metadata| metadata.len() > 0)
+        .unwrap_or(false);
+    if !cached {
+        let parent = path.parent()?;
+        std::fs::create_dir_all(parent).ok()?;
+        let response = cover_client()?.get(url).send().ok()?;
+        if !response.status().is_success() {
+            return None;
+        }
+        let bytes = response.bytes().ok()?;
+        if bytes.is_empty() {
+            return None;
+        }
+        let temporary = path.with_extension("tmp");
+        std::fs::write(&temporary, &bytes).ok()?;
+        std::fs::rename(&temporary, &path).ok()?;
+    }
+    reqwest::Url::from_file_path(&path)
+        .ok()
+        .map(|url| url.to_string())
+}
+
 fn update_media_metadata(
     media: &mut Option<MediaControls>,
     cooldown: &mut Option<Instant>,
@@ -632,9 +691,11 @@ fn update_media_metadata(
     if !ensure_media(media, cooldown, window_handle, events) {
         return;
     }
-    let cover_url = (state.cover_url.starts_with("http://")
-        || state.cover_url.starts_with("https://"))
-    .then_some(state.cover_url.as_str());
+    let is_remote =
+        state.cover_url.starts_with("http://") || state.cover_url.starts_with("https://");
+    let cover = is_remote
+        .then(|| local_cover_url(&state.cover_url).unwrap_or_else(|| state.cover_url.clone()));
+    let cover_url = cover.as_deref();
     let duration = (state.duration_ms > 0).then(|| Duration::from_millis(state.duration_ms as u64));
     let metadata = MediaMetadata {
         title: (!state.title.is_empty()).then_some(state.title.as_str()),

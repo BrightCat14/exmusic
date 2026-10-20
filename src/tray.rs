@@ -67,7 +67,7 @@ fn cstring(value: &str) -> CString {
 }
 
 unsafe extern "C" {
-    fn exmusic_application_new();
+    fn exmusic_application_new() -> i32;
     fn exmusic_application_exec() -> i32;
     fn exmusic_window_handle() -> u64;
     fn exmusic_window_raise();
@@ -90,8 +90,8 @@ unsafe extern "C" {
     );
 }
 
-pub fn create_application() {
-    unsafe { exmusic_application_new() }
+pub fn create_application() -> bool {
+    unsafe { exmusic_application_new() == 0 }
 }
 
 pub fn exec() -> i32 {

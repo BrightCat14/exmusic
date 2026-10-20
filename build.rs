@@ -10,6 +10,7 @@ fn main() {
         .qt_module("Quick")
         .qt_module("Svg")
         .qt_module("Widgets")
+        .qt_module("Network")
         .qml_module(QmlModule {
             uri: "app.backend",
             rust_files: &["src/player.rs"],

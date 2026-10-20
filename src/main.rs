@@ -11,7 +11,9 @@ unsafe extern "C" {
 }
 
 fn main() {
-    tray::create_application();
+    if !tray::create_application() {
+        return;
+    }
 
     unsafe {
         exmusic_set_app_icon();

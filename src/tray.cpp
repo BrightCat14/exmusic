@@ -1,19 +1,29 @@
 #include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
+#include <QtCore/QEvent>
+#include <QtCore/QStandardPaths>
 #include <QtCore/QString>
+#include <QtCore/QTimer>
 #include <QtGui/QAction>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
 #include <QtGui/QWindow>
+#include <QtNetwork/QLocalServer>
+#include <QtNetwork/QLocalSocket>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSystemTrayIcon>
 
 extern "C" void exmusic_tray_event(int action);
+extern "C" void exmusic_window_raise();
 
 namespace {
 
 QApplication* g_application = nullptr;
 QSystemTrayIcon* g_tray = nullptr;
+QLocalServer* g_server = nullptr;
+QWindow* g_mainWindow = nullptr;
+bool g_wasMaximized = false;
 QMenu* g_menu = nullptr;
 QAction* g_trackAction = nullptr;
 QAction* g_playPauseAction = nullptr;
@@ -45,13 +55,56 @@ QIcon appIcon()
 
 QWindow* mainWindow()
 {
+    if (g_mainWindow) {
+        return g_mainWindow;
+    }
     const auto windows = QGuiApplication::topLevelWindows();
     for (QWindow* window : windows) {
-        if (window && window->isVisible()) {
+        if (window && window->type() == Qt::Window
+            && window->title() == QStringLiteral("EXmusic")) {
+            g_mainWindow = window;
+            QObject::connect(window, &QObject::destroyed, []() {
+                g_mainWindow = nullptr;
+            });
             return window;
         }
     }
-    return windows.isEmpty() ? nullptr : windows.first();
+    for (QWindow* window : windows) {
+        if (window && window->type() == Qt::Window) {
+            g_mainWindow = window;
+            QObject::connect(window, &QObject::destroyed, []() {
+                g_mainWindow = nullptr;
+            });
+            return window;
+        }
+    }
+    return nullptr;
+}
+
+bool windowShown(QWindow* window)
+{
+    return window && window->isVisible()
+        && !(window->windowState() & Qt::WindowMinimized);
+}
+
+bool trayActive()
+{
+    return g_tray && g_tray->isVisible();
+}
+
+void showMainWindow(QWindow* window)
+{
+    if (!window) {
+        return;
+    }
+    window->setWindowState(Qt::WindowNoState);
+    if (g_wasMaximized) {
+        window->showMaximized();
+    } else {
+        window->showNormal();
+    }
+    window->raise();
+    window->requestActivate();
 }
 
 void toggleWindow()
@@ -60,12 +113,20 @@ void toggleWindow()
     if (!window) {
         return;
     }
-    if (window->isVisible()) {
+    if (windowShown(window)) {
+        g_wasMaximized = window->windowState() & Qt::WindowMaximized;
         window->hide();
     } else {
-        window->show();
-        window->requestActivate();
+        showMainWindow(window);
     }
+}
+
+void updateShowAction()
+{
+    if (!g_showAction) {
+        return;
+    }
+    g_showAction->setText(windowShown(mainWindow()) ? g_hideLabel : g_showLabel);
 }
 
 void ensureTray()
@@ -109,11 +170,7 @@ void ensureTray()
     });
 
     QObject::connect(g_menu, &QMenu::aboutToShow, []() {
-        if (g_showAction) {
-            QWindow* window = mainWindow();
-            g_showAction->setText(window && window->isVisible() ? g_hideLabel
-                                                                : g_showLabel);
-        }
+        updateShowAction();
     });
 
     QObject::connect(g_tray, &QSystemTrayIcon::activated,
@@ -156,14 +213,110 @@ void updateTrayText()
     }
 }
 
+QString singleInstanceName()
+{
+#ifdef Q_OS_WIN
+    QString user = qEnvironmentVariable("USERNAME");
+#else
+    QString user = qEnvironmentVariable("USER");
+#endif
+    if (user.isEmpty()) {
+        user = QStringLiteral("default");
+    }
+
+#ifdef Q_OS_WIN
+    return QStringLiteral("exmusic-single-instance-") + user;
+#else
+    QString directory = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    if (directory.isEmpty()) {
+        directory = QDir::tempPath();
+    }
+    QDir().mkpath(directory);
+    return directory + QStringLiteral("/exmusic-") + user + QStringLiteral(".sock");
+#endif
+}
+
+bool notifyExistingInstance(const QString& name)
+{
+    QLocalSocket socket;
+    socket.connectToServer(name, QIODevice::WriteOnly);
+    if (!socket.waitForConnected(300)) {
+        return false;
+    }
+    socket.write("raise");
+    socket.flush();
+    socket.waitForBytesWritten(300);
+    socket.disconnectFromServer();
+    return true;
+}
+
+bool startSingleInstanceServer(const QString& name)
+{
+    g_server = new QLocalServer();
+    if (!g_server->listen(name)) {
+        if (notifyExistingInstance(name)) {
+            return false;
+        }
+        QLocalServer::removeServer(name);
+        g_server->listen(name);
+    }
+
+    QObject::connect(g_server, &QLocalServer::newConnection, []() {
+        while (QLocalSocket* socket = g_server->nextPendingConnection()) {
+            QObject::connect(socket, &QLocalSocket::disconnected,
+                             socket, &QObject::deleteLater);
+            socket->readAll();
+        }
+        QTimer::singleShot(0, []() {
+            exmusic_window_raise();
+        });
+    });
+    return true;
+}
+
+class WindowEventFilter : public QObject
+{
+public:
+    using QObject::QObject;
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        QWindow* window = qobject_cast<QWindow*>(watched);
+        if (!window || window != mainWindow()) {
+            return false;
+        }
+
+        if (event->type() == QEvent::WindowStateChange) {
+            if ((window->windowState() & Qt::WindowMinimized) && trayActive()) {
+                g_wasMaximized = window->windowState() & Qt::WindowMaximized;
+                QTimer::singleShot(0, window, [window]() {
+                    if (window->windowState() & Qt::WindowMinimized) {
+                        window->hide();
+                    }
+                });
+            }
+        } else if (event->type() == QEvent::Close) {
+            if (trayActive()) {
+                event->ignore();
+                g_wasMaximized = window->windowState() & Qt::WindowMaximized;
+                window->hide();
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
+
 } // namespace
 
 extern "C" {
 
-void exmusic_application_new()
+int exmusic_application_new()
 {
     if (g_application) {
-        return;
+        return 0;
     }
     static int argc = 1;
     static char applicationName[] = "exmusic";
@@ -171,6 +324,18 @@ void exmusic_application_new()
     g_application = new QApplication(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("EXmusic"));
     QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+
+    const QString instanceName = singleInstanceName();
+    if (notifyExistingInstance(instanceName)) {
+        return 1;
+    }
+
+    if (!startSingleInstanceServer(instanceName)) {
+        return 1;
+    }
+
+    g_application->installEventFilter(new WindowEventFilter(g_application));
+    return 0;
 }
 
 int exmusic_application_exec()
@@ -186,12 +351,7 @@ unsigned long long exmusic_window_handle()
 
 void exmusic_window_raise()
 {
-    QWindow* window = mainWindow();
-    if (!window) {
-        return;
-    }
-    window->show();
-    window->requestActivate();
+    showMainWindow(mainWindow());
 }
 
 void exmusic_quit()
@@ -207,6 +367,10 @@ int exmusic_tray_set_visible(int visible)
         }
         if (g_application) {
             g_application->setQuitOnLastWindowClosed(true);
+        }
+        QWindow* window = mainWindow();
+        if (window && !windowShown(window)) {
+            showMainWindow(window);
         }
         return 0;
     }
@@ -250,10 +414,7 @@ void exmusic_tray_set_labels(const char* play,
     if (g_previousAction) {
         g_previousAction->setText(g_previousLabel);
     }
-    if (g_showAction) {
-        QWindow* window = mainWindow();
-        g_showAction->setText(window && window->isVisible() ? g_hideLabel : g_showLabel);
-    }
+    updateShowAction();
     if (g_quitAction) {
         g_quitAction->setText(g_quitLabel);
     }
