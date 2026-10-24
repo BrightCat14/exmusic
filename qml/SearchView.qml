@@ -70,7 +70,9 @@ Item {
             model: root.results
             delegate: TrackRow {
                 required property var modelData
-                width: tracks.width
+		required property int index
+
+		width: tracks.width
                 track: modelData
                 active: root.player && root.player.current_track_id === modelData.id
                 onClicked: if (root.player) root.player.play_list(JSON.stringify(root.results), index)
